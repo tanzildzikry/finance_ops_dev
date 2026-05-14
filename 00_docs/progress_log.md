@@ -1440,45 +1440,50 @@ Phase 10 — Approved SQL Examples / KPI SQL Control
 
 # Phase 10 — Approved SQL Examples / KPI SQL Control
 
-Status: NOT STARTED
+Status: PASS
+Validation Date: 2026-05-15
+Risk Level: LOW
+Technical Commit: c17c338 — Add phase 10 approved KPI SQL controls
 
-Pending tasks:
+Purpose:
+Create and validate approved SQL examples and KPI reconciliation control for the Unbilled Monitoring dashboard.
 
-- [ ] Create approved SQL examples file.
-- [ ] Add Executive Overview KPI SQL.
-- [ ] Add AR Controller aging bucket SQL.
-- [ ] Add Top High Risk BC SQL.
-- [ ] Add PIC Score Base SQL.
-- [ ] Add BC Investigation SQL.
-- [ ] Add Data Quality / Exception SQL.
-- [ ] Validate approved SQL examples in PostgreSQL.
-- [ ] Commit approved SQL examples.
+Files Created:
+- 01_database/approved_sql_examples/010_approved_kpi_control_examples.sql
+- 05_tests/reconciliation_tests/010_validate_kpi_control_vs_latest_snapshot.sql
 
-Planned file:
+Validation Output:
+- total_metric_checks = 18
+- passed_metric_checks = 18
+- failed_metric_checks = 0
+- phase10_validation_result = PASS
+- risk_level = LOW
 
-```text
-01_database/approved_sql_examples/009_approved_sql_examples_snapshot_kpi.sql
-```
+Controls Validated:
+- KPI control view matches latest snapshot recalculation.
+- Open backlog uses is_open_unbilled.
+- Open exposure uses open_rab_exposure_amount.
+- REPORTED is excluded from active backlog.
+- Average Aging Open BC uses open + ENDED + aging > 0.
+- Daily movement readiness = PASS because distinct_snapshot_dates = 2.
+- No actual cashflow logic was created.
 
-Required rules:
+KPI Baseline Confirmed:
+- total_bc_count = 8266
+- open_bc_count = 8145
+- open_rab_exposure_amount = 4,956,993,250,804.46
+- high_risk_bc_count = 3
+- high_risk_rab_exposure_amount = 23,820,974,461.00
+- reported_excluded_bc_count = 112
+- unclassified_pic_count = 12
+- manual_review_bc_count = 20
+- average_aging_open_bc = 51.0055248618784530
 
-- Use schema.table explicitly.
-- Do not use `SELECT *` in final reporting queries.
-- Use `snapshot.vw_latest_bc_daily_status_snapshot` for current dashboard KPI.
-- Use `snapshot.bc_daily_status_snapshot` for historical/daily movement.
-- Use `snapshot.vw_latest_snapshot_kpi_control` for KPI reconciliation.
-- Exclude REPORTED from active open backlog.
-- Use RAB as Revenue / planned billable amount.
-- Use `is_open_unbilled` for open backlog.
-- Use `open_rab_exposure_amount` for open exposure.
-- Use boolean flags from snapshot v1.1.
-- Do not create actual cashflow logic without cash-in data.
-- Average Aging Open BC must filter ENDED and positive aging only.
+Validation Result:
+PASS
 
-Validation result: NOT STARTED  
-Risk level before control: MEDIUM
-
----
+Next Phase:
+Phase 11 — Power BI Semantic Model / Dashboard Model Preparation
 
 # Phase 11 — Power BI Connection
 
