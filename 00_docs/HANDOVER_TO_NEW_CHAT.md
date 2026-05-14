@@ -2,7 +2,7 @@
 
 ## 1. Handover Purpose
 
-This document is used to continue the Finance_Ops_Dev project in a new ChatGPT conversation without losing project context, purpose, progress, structure, rules, and next actions.
+This document is used to continue the Finance_Ops_Dev project in a new ChatGPT conversation without losing project context, purpose, progress, structure, rules, validated state, and next actions.
 
 The new assistant must continue from the latest validated project state and must not restart from zero.
 
@@ -45,6 +45,30 @@ Current project mode:
 FINANCE_OPS_PROJECT MODE
 ```
 
+Current latest validated phase:
+
+```text
+Phase 9.5 — Snapshot Layer Validation
+```
+
+Current next phase:
+
+```text
+Phase 10 — Approved SQL Examples / KPI SQL Control
+```
+
+Current production readiness:
+
+```text
+NOT YET
+```
+
+Reason:
+
+```text
+PostgreSQL raw, clean, and snapshot foundations are validated, but Power BI semantic model, DAX measures, report pages, and Power BI vs SQL reconciliation are not yet complete.
+```
+
 ---
 
 ## 3. Important Operating Rules
@@ -56,6 +80,7 @@ Core project rules:
 - RAB = Revenue / planned billable amount.
 - High risk = aging > 60 and RAB >= 3,000,000,000.
 - UNCLASSIFIED = PIC not input in ERP; correction bucket.
+- UNCLASSIFIED is not PIC performance penalty.
 - REPORTED = excluded bucket, not active backlog.
 - DATELINE KE AR = excluded.
 - Source date format = MM/DD/YYYY.
@@ -87,6 +112,30 @@ Do not use simplistic open logic such as:
 
 ```text
 bill_status <> 'BILLED'
+```
+
+Average Aging Open BC rule:
+
+```text
+Average Aging Open BC =
+AVG(unbilled_aging_days)
+WHERE is_open_unbilled = true
+AND event_status = 'ENDED'
+AND unbilled_aging_days > 0
+```
+
+Negative aging and ON GOING events must not be included in Average Aging Open BC.
+
+Daily movement rule:
+
+```text
+Daily movement is meaningful only after at least two snapshot dates.
+```
+
+Current state:
+
+```text
+Daily movement is meaningful because snapshot validation found 2 distinct snapshot dates.
 ```
 
 ---
@@ -142,7 +191,47 @@ If repo becomes public or externally shared, amount fields must be reviewed agai
 
 ---
 
-## 5. Current Repository Structure
+## 5. Windows / File Creation Operating Rules
+
+Important project execution rule:
+
+```text
+Use Python-first file generation for project SQL/MD files.
+```
+
+Reason:
+
+```text
+PowerShell Set-Content caused UTF-8 BOM / encoding issues in SQL files.
+```
+
+Rules:
+
+- Prioritize Python-based file creation instead of PowerShell `Set-Content`.
+- Write files using `encoding="utf-8"` without BOM.
+- Include BOM check when generating files through Python.
+- Use full Windows path.
+- Do not use placeholders such as `{target}`, `<USER>`, `PATH/TO/FILE`, or `SQL CONTENT HERE`.
+- If path, folder, file name, schema, table, column, or source file name is uncertain, ask user first.
+- Do not use Linux/macOS heredoc style such as `python - <<'PY'` in PowerShell.
+- Python writer pattern using PowerShell here-string piped to Python is accepted.
+- For SQL files using `\copy`, `\echo`, or `\set ON_ERROR_STOP`, run with `psql -f`, not pgAdmin Query Tool.
+
+Known safe project root:
+
+```text
+D:\Tanzil\AR COLLECTION\_DASHBOARD POWER BI\Bahan SQL + PBI\finance_ops_dev\Repo Finance_Ops_Dev
+```
+
+Known PostgreSQL psql path:
+
+```text
+C:\Program Files\PostgreSQL\18\bin\psql.exe
+```
+
+---
+
+## 6. Current Repository Structure
 
 Current repo root:
 
@@ -150,11 +239,12 @@ Current repo root:
 Repo Finance_Ops_Dev/
 ```
 
-Current structure:
+Current important structure:
 
 ```text
 00_docs/
   .gitkeep
+  HANDOVER_TO_NEW_CHAT.md
   progress_log.md
   source_data_preparation.md
   source_file_register.md
@@ -165,13 +255,20 @@ Current structure:
   ddl/
     .gitkeep
     001_create_database_and_schemas.sql
+    002_create_and_load_raw_source_tables.sql
   transform/
-    .gitkeep
+    003_transform_raw_to_clean.sql
   validation/
     .gitkeep
     001_validate_database_and_schemas.sql
+    002_validate_raw_source_load.sql
+    003_validate_clean_layer.sql
   snapshot/
-    .gitkeep
+    004_create_snapshot_tables.sql
+    005_create_snapshot_run_function.sql
+    006_execute_first_snapshot.sql
+    007_create_latest_snapshot_views.sql
+    008_validate_snapshot_layer.sql
   approved_sql_examples/
     .gitkeep
 
@@ -210,7 +307,7 @@ REPO_SCOPE.md
 
 ---
 
-## 6. Completed Progress Summary
+## 7. Completed Progress Summary
 
 ### Phase 0 — Project Safety Foundation
 
@@ -232,10 +329,16 @@ Completed:
 - Real data separated from repo.
 - PBIX, database dumps, `.env`, real CSV/Excel blocked from repo.
 
-Commit message used:
+Validation result:
 
 ```text
-chore: initialize repo safety foundation
+PASS
+```
+
+Risk level:
+
+```text
+LOW
 ```
 
 ---
@@ -253,11 +356,24 @@ Completed:
 - Existing agent-build repo renamed to avoid conflict.
 - New GitHub repo connected.
 - Local repo pushed to GitHub.
+- Repository visibility confirmed public.
 
 GitHub repo:
 
 ```text
 https://github.com/tanzildzikry/finance_ops_dev.git
+```
+
+Validation result:
+
+```text
+PASS
+```
+
+Risk level:
+
+```text
+LOW
 ```
 
 ---
@@ -272,14 +388,20 @@ PASS
 
 Completed:
 
-- Standard folders created.
+- Standard project folders created.
 - `.gitkeep` placeholders added.
 - Structure pushed to GitHub.
 
-Commit message used:
+Validation result:
 
 ```text
-chore: add project folder structure
+PASS
+```
+
+Risk level:
+
+```text
+LOW
 ```
 
 ---
@@ -295,8 +417,8 @@ PASS
 Completed:
 
 - PostgreSQL installed.
-- PostgreSQL version: 18.3.
-- `psql` PATH configured.
+- PostgreSQL version detected: 18.3.
+- PostgreSQL bin path configured.
 - Login as `postgres` successful.
 - Database created:
 
@@ -315,13 +437,6 @@ reporting
 documentary
 ```
 
-Validation result:
-
-```text
-6 schemas found
-PASS
-```
-
 SQL files created:
 
 ```text
@@ -329,12 +444,16 @@ SQL files created:
 01_database/validation/001_validate_database_and_schemas.sql
 ```
 
-Commit messages used:
+Validation result:
 
 ```text
-feat: add database and schema setup script
-test: add database and schema validation script
-docs: mark postgres environment setup as pass
+PASS
+```
+
+Risk level:
+
+```text
+LOW
 ```
 
 ---
@@ -344,10 +463,10 @@ docs: mark postgres environment setup as pass
 Status:
 
 ```text
-IN PROGRESS
+PASS
 ```
 
-Completed so far:
+Completed:
 
 - `source_data_preparation.md` created.
 - `source_file_register.md` created.
@@ -355,8 +474,9 @@ Completed so far:
 - `masked_source_review.md` created.
 - Python source profile script created.
 - Masked source profile result generated.
+- Source files confirmed under approved masked folder.
 
-Masked files added:
+Masked files:
 
 ```text
 03_sample_data_masked/masked_bc_source_sample.csv
@@ -375,21 +495,616 @@ Profile result:
 00_docs/masked_source_profile_result.md
 ```
 
-Latest completed command:
+Source profile result:
 
-```bash
-git add 05_tests/source_file_profile_check.py 00_docs/masked_source_profile_result.md
-git commit -m "test: add masked source profile check"
-git push
+```text
+masked_bc_source_sample.csv = 8266 rows, 27 headers, duplicate header 0, PASS
+masked_pic_list_sample.csv  = 69 rows, 4 headers, duplicate header 0, PASS
 ```
 
 Important note:
 
-PowerShell script was abandoned because of parsing and encoding issues. Python script is now the accepted approach.
+```text
+PowerShell source profiling was abandoned because of parsing and encoding issues.
+Python source profiling is the accepted approach.
+```
+
+Validation result:
+
+```text
+PASS
+```
+
+Risk level:
+
+```text
+LOW
+```
 
 ---
 
-## 7. Current PostgreSQL State
+### Phase 5 — Raw Layer Build
+
+Status:
+
+```text
+PASS
+```
+
+Created file:
+
+```text
+01_database/ddl/002_create_and_load_raw_source_tables.sql
+```
+
+Completed:
+
+- Created `raw.raw_bc_source`.
+- Created `raw.raw_pic_list`.
+- Loaded masked BC CSV.
+- Loaded masked PIC CSV.
+- Used raw-layer text-first approach.
+- Added metadata columns:
+  - `source_file_name`
+  - `loaded_at`
+- Fixed psql / PowerShell execution confusion.
+- Fixed `\copy` multiline error by writing `\copy` as one full line.
+- Added `\set ON_ERROR_STOP on`.
+
+Final raw load result:
+
+```text
+raw.raw_bc_source = 8266 rows
+raw.raw_pic_list  = 69 rows
+```
+
+Key integrity:
+
+```text
+raw.raw_bc_source.bc_number | null_or_blank 0 | duplicate 0 | PASS
+raw.raw_pic_list.pic_code   | null_or_blank 0 | duplicate 0 | PASS
+```
+
+Validation result:
+
+```text
+PASS
+```
+
+Risk level:
+
+```text
+LOW
+```
+
+---
+
+### Phase 6 — Raw Load Validation Script Separation
+
+Status:
+
+```text
+PASS
+```
+
+Created file:
+
+```text
+01_database/validation/002_validate_raw_source_load.sql
+```
+
+Completed:
+
+- Created separate raw validation script.
+- Validated raw row count.
+- Validated raw key integrity.
+- Validated raw metadata.
+- Validated raw column count.
+
+Validation:
+
+```text
+raw.raw_bc_source | 8266 | 8266 | PASS
+raw.raw_pic_list  | 69   | 69   | PASS
+raw.raw_bc_source | 29 columns | PASS
+raw.raw_pic_list  | 6 columns  | PASS
+```
+
+Validation result:
+
+```text
+PASS
+```
+
+Risk level:
+
+```text
+LOW
+```
+
+---
+
+### Phase 7 — Clean Layer DDL + Raw-to-Clean Transform
+
+Status:
+
+```text
+PASS
+```
+
+Created file:
+
+```text
+01_database/transform/003_transform_raw_to_clean.sql
+```
+
+Completed:
+
+- Created / patched `clean.clean_bc`.
+- Created / patched `clean.clean_pic_list`.
+- Used safe reload approach because existing clean table had dependent views.
+- Avoided `DROP TABLE ... CASCADE`.
+- Used `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
+- Used `TRUNCATE` + `INSERT`.
+- Parsed dates using MM/DD/YYYY.
+- Cast amount fields to numeric.
+- Cast aging and closing duration to integer.
+- Normalized status fields to uppercase.
+- Converted invalid/missing PIC to `UNCLASSIFIED`.
+- Preserved metadata:
+  - `source_file_name`
+  - `loaded_at`
+  - `cleaned_at`
+
+Important issue resolved:
+
+```text
+DROP TABLE clean.clean_bc was blocked by dependent views.
+Decision: avoid DROP CASCADE and use safe reload.
+```
+
+Clean row count validation:
+
+```text
+clean.clean_bc       = 8266 / 8266 PASS
+clean.clean_pic_list = 69 / 69 PASS
+```
+
+Validation result:
+
+```text
+PASS
+```
+
+Risk level:
+
+```text
+LOW
+```
+
+---
+
+### Phase 8 — Clean Layer Validation
+
+Status:
+
+```text
+PASS
+```
+
+Created file:
+
+```text
+01_database/validation/003_validate_clean_layer.sql
+```
+
+Completed validation:
+
+- Raw vs clean row count.
+- Key integrity.
+- Date parsing.
+- Amount negative validation.
+- UNCLASSIFIED PIC validation.
+- PIC orphan validation.
+- Billing status validation.
+- Event status validation.
+- Clean metadata validation.
+- Final clean summary.
+
+Important validation outputs:
+
+```text
+BC raw vs clean  | 8266 | 8266 | PASS
+PIC raw vs clean | 69   | 69   | PASS
+
+clean.clean_bc.bc_number      | null 0 | duplicate 0 | PASS
+clean.clean_pic_list.pic_code | null 0 | duplicate 0 | PASS
+
+event_start_date      | parse_failed 0 | PASS
+event_end_date        | parse_failed 0 | PASS
+latest_invoice_date   | parse_failed 0 | PASS
+recording_period_date | parse_failed 0 | PASS
+
+bc_key_integrity      | PASS
+negative_amount_check | PASS
+pic_key_integrity     | PASS
+pic_orphan_check      | PASS
+row_count_bc          | PASS
+row_count_pic         | PASS
+```
+
+Validation result:
+
+```text
+PASS
+```
+
+Risk level:
+
+```text
+LOW
+```
+
+---
+
+### Phase 9.1 — Create Snapshot Table DDL
+
+Status:
+
+```text
+PASS
+```
+
+Created file:
+
+```text
+01_database/snapshot/004_create_snapshot_tables.sql
+```
+
+Created / validated tables:
+
+```text
+snapshot.snapshot_run_log
+snapshot.bc_daily_status_snapshot
+snapshot.bc_daily_issue_history
+```
+
+Key columns validated:
+
+```text
+snapshot_date
+bc_number
+is_open_unbilled
+open_rab_exposure_amount
+is_reported_excluded
+invoice_completion_ratio
+high_risk_flag
+issue_source_text
+snapshot_run_id
+```
+
+Validation result:
+
+```text
+PASS
+```
+
+Risk level:
+
+```text
+LOW
+```
+
+---
+
+### Phase 9.2 — Create Snapshot Run Function
+
+Status:
+
+```text
+PASS
+```
+
+Created file:
+
+```text
+01_database/snapshot/005_create_snapshot_run_function.sql
+```
+
+Created function:
+
+```sql
+snapshot.run_bc_daily_snapshot(
+    p_snapshot_date date,
+    p_snapshot_cutoff_label text,
+    p_source_type text
+)
+```
+
+Daily snapshot command:
+
+```sql
+SELECT snapshot.run_bc_daily_snapshot(CURRENT_DATE, '1600_WIB', 'daily_csv_upload');
+```
+
+Important issue resolved:
+
+```text
+Existing function with same signature had older parameter names.
+PostgreSQL blocked CREATE OR REPLACE FUNCTION.
+Resolution: add DROP FUNCTION IF EXISTS snapshot.run_bc_daily_snapshot(date, text, text) before CREATE FUNCTION.
+```
+
+Additional issue resolved:
+
+```text
+Existing snapshot responsibility constraint blocked responsibility_type = 'EXCLUDED'.
+Resolution: use responsibility_type = 'UNKNOWN' for REPORTED_EXCLUDED while retaining detected_issue_category and detected_blocker as REPORTED_EXCLUDED.
+```
+
+Function validation:
+
+```text
+snapshot.run_bc_daily_snapshot(date,text,text) | PASS
+```
+
+Validation result:
+
+```text
+PASS
+```
+
+Risk level:
+
+```text
+LOW
+```
+
+---
+
+### Phase 9.3 — Execute First Snapshot
+
+Status:
+
+```text
+PASS
+```
+
+Created file:
+
+```text
+01_database/snapshot/006_execute_first_snapshot.sql
+```
+
+Executed command:
+
+```sql
+SELECT snapshot.run_bc_daily_snapshot(CURRENT_DATE, '1600_WIB', 'daily_csv_upload');
+```
+
+Snapshot result:
+
+```text
+snapshot_run_id = 3
+snapshot_date = 2026-05-15
+snapshot_cutoff_label = 1600_WIB
+source_type = daily_csv_upload
+snapshot_status = COMPLETED
+validation_result = PASS
+risk_level = LOW
+```
+
+Row count validation:
+
+```text
+total_clean_bc_rows        = 8266
+total_snapshot_rows        = 8266
+total_issue_history_rows   = 8266
+
+snapshot.bc_daily_status_snapshot | 8266 / 8266 | PASS
+snapshot.bc_daily_issue_history   | 8266 / 8266 | PASS
+```
+
+Latest snapshot of day validation:
+
+```text
+snapshot_date = 2026-05-15
+latest_snapshot_rows = 8266
+latest_flag_true_count = 8266
+PASS
+```
+
+Validation result:
+
+```text
+PASS
+```
+
+Risk level:
+
+```text
+LOW
+```
+
+---
+
+### Phase 9.4 — Create Latest Snapshot Views
+
+Status:
+
+```text
+PASS
+```
+
+Created file:
+
+```text
+01_database/snapshot/007_create_latest_snapshot_views.sql
+```
+
+Created views:
+
+```text
+snapshot.vw_latest_snapshot_run
+snapshot.vw_latest_bc_daily_status_snapshot
+snapshot.vw_latest_bc_daily_issue_history
+snapshot.vw_latest_snapshot_kpi_control
+```
+
+Important issue resolved:
+
+```text
+Existing snapshot tables did not contain snapshot_row_id / issue_history_id expected by first view version.
+Resolution: remove those columns from latest views for compatibility with existing table structure.
+```
+
+View validation:
+
+```text
+snapshot.vw_latest_bc_daily_issue_history   | PASS
+snapshot.vw_latest_bc_daily_status_snapshot | PASS
+snapshot.vw_latest_snapshot_kpi_control     | PASS
+snapshot.vw_latest_snapshot_run             | PASS
+```
+
+Row count validation:
+
+```text
+snapshot.vw_latest_bc_daily_issue_history   | 8266 / 8266 | PASS
+snapshot.vw_latest_bc_daily_status_snapshot | 8266 / 8266 | PASS
+```
+
+KPI control preview after patch:
+
+```text
+snapshot_run_id                   = 3
+snapshot_date                     = 2026-05-15
+total_bc_count                    = 8266
+open_bc_count                     = 8145
+open_rab_exposure_amount          = 4,956,993,250,804.46
+high_risk_bc_count                = 3
+high_risk_rab_exposure_amount     = 23,820,974,461.00
+reported_excluded_bc_count        = 112
+unclassified_pic_count            = 12
+manual_review_bc_count            = 20
+average_aging_open_bc             = 51.0055248618784530
+```
+
+Important KPI logic patch:
+
+```text
+average_aging_open_bc originally included negative aging / ON GOING events.
+Revised rule:
+is_open_unbilled = true
+AND event_status = 'ENDED'
+AND unbilled_aging_days > 0
+```
+
+Validation result:
+
+```text
+PASS
+```
+
+Risk level:
+
+```text
+LOW
+```
+
+---
+
+### Phase 9.5 — Snapshot Layer Validation
+
+Status:
+
+```text
+PASS
+```
+
+Created file:
+
+```text
+01_database/snapshot/008_validate_snapshot_layer.sql
+```
+
+Completed validation:
+
+- Latest snapshot run log validation.
+- Latest snapshot row count validation.
+- Snapshot key integrity validation.
+- Required control field null validation.
+- REPORTED exclusion validation.
+- Open exposure validation.
+- High risk validation.
+- UNCLASSIFIED validation.
+- Average aging logic validation.
+- KPI control view validation.
+- Snapshot issue history validation.
+- Daily movement readiness validation.
+- Final snapshot validation summary.
+
+Important outputs:
+
+```text
+KPI control view validation | PASS
+
+snapshot_run_id = 3
+snapshot_date = 2026-05-15
+total_bc_count = 8266
+open_bc_count = 8145
+open_rab_exposure_amount = 4,956,993,250,804.46
+high_risk_bc_count = 3
+high_risk_rab_exposure_amount = 23,820,974,461.00
+reported_excluded_bc_count = 112
+unclassified_pic_count = 12
+manual_review_bc_count = 20
+average_aging_open_bc = 51.0055248618784530
+```
+
+Issue history validation:
+
+```text
+issue_history_row_count = 8266
+blank_issue_source_text_count = 0
+null_detected_issue_category_count = 0
+null_detected_blocker_count = 0
+PASS
+```
+
+Daily movement readiness:
+
+```text
+distinct_snapshot_dates = 2
+validation_result = PASS
+control_note = Daily movement is meaningful.
+```
+
+Final snapshot validation summary:
+
+```text
+average_aging_logic          | PASS
+high_risk_logic              | PASS
+latest_issue_view_row_count  | PASS
+latest_status_view_row_count | PASS
+reported_excluded_not_open   | PASS
+```
+
+Validation result:
+
+```text
+PASS
+```
+
+Risk level:
+
+```text
+LOW
+```
+
+---
+
+## 8. Current PostgreSQL State
 
 PostgreSQL database:
 
@@ -408,163 +1123,197 @@ Current schemas:
 | reporting | Power BI-ready views and reporting outputs. |
 | documentary | Data dictionary, validation logs, lineage, and documentation metadata. |
 
-Current validation script:
+Current raw tables:
 
 ```text
-01_database/validation/001_validate_database_and_schemas.sql
+raw.raw_bc_source
+raw.raw_pic_list
 ```
 
-Current result:
+Current clean tables:
 
 ```text
-PASS
+clean.clean_bc
+clean.clean_pic_list
+```
+
+Current snapshot tables:
+
+```text
+snapshot.snapshot_run_log
+snapshot.bc_daily_status_snapshot
+snapshot.bc_daily_issue_history
+```
+
+Current latest snapshot views:
+
+```text
+snapshot.vw_latest_snapshot_run
+snapshot.vw_latest_bc_daily_status_snapshot
+snapshot.vw_latest_bc_daily_issue_history
+snapshot.vw_latest_snapshot_kpi_control
+```
+
+Current confirmed row counts:
+
+```text
+raw.raw_bc_source                              = 8266
+raw.raw_pic_list                               = 69
+clean.clean_bc                                 = 8266
+clean.clean_pic_list                           = 69
+snapshot.vw_latest_bc_daily_status_snapshot    = 8266
+snapshot.vw_latest_bc_daily_issue_history      = 8266
+```
+
+Latest snapshot run:
+
+```text
+snapshot_run_id = 3
+snapshot_date = 2026-05-15
+snapshot_status = COMPLETED
+validation_result = PASS
+risk_level = LOW
 ```
 
 ---
 
-## 8. Current Git State Expected
+## 9. Current Git State
 
-At handover point, expected Git state should be clean after latest push.
-
-Command:
+Expected Git state at handover point:
 
 ```bash
 git status
 ```
 
-Expected:
+Expected result:
 
 ```text
 On branch main
 Your branch is up to date with 'origin/main'.
+
 nothing to commit, working tree clean
 ```
 
-If not clean, review files before continuing.
+If not clean, review untracked/modified files before continuing.
+
+Temporary helper files such as `write_phase*_validation.py` must not be committed unless explicitly promoted as official project source code.
 
 ---
 
-## 9. Current Hold Point
+## 10. Current Hold Point
 
 Current hold point:
 
 ```text
-After Phase 4.5 — Masked source profile check
+After Phase 9.5 — Snapshot Layer Validation
 ```
 
-Next recommended action:
-
-```text
-Review masked_source_profile_result.md and confirm whether Phase 4 can be marked PASS.
-```
-
-Then continue to:
-
-```text
-Phase 5 — Raw Layer Build
-```
-
----
-
-## 10. Immediate Next Steps
-
-### Step 1 — Confirm source profile result
-
-Open:
-
-```text
-00_docs/masked_source_profile_result.md
-```
-
-Check:
-
-```text
-Final Validation Result
-```
-
-Expected:
+Latest validation result:
 
 ```text
 PASS
 ```
 
-Also check:
-
-- row count for `masked_bc_source_sample.csv`
-- header count for `masked_bc_source_sample.csv`
-- row count for `masked_pic_list_sample.csv`
-- header count for `masked_pic_list_sample.csv`
-- duplicate header count = 0
-
-### Step 2 — Update progress_log.md
-
-If profile result is PASS, update:
+Risk level:
 
 ```text
-00_docs/progress_log.md
+LOW
 ```
 
-Set Phase 4.5 as PASS.
-
-### Step 3 — Start Phase 5
-
-Phase 5 target:
+Next recommended phase:
 
 ```text
-Raw Layer Build
+Phase 10 — Approved SQL Examples / KPI SQL Control
+```
+
+---
+
+## 11. Immediate Next Steps
+
+### Step 1 — Confirm progress_log.md update
+
+Confirm whether `00_docs/progress_log.md` has been updated through Phase 9.5 and committed.
+
+Expected commit message:
+
+```text
+docs: update progress log through snapshot validation
+```
+
+If not yet updated, update progress log before Phase 10.
+
+### Step 2 — Start Phase 10
+
+Phase 10 target:
+
+```text
+Approved SQL Examples / KPI SQL Control
 ```
 
 Main tasks:
 
-- Create raw table DDL.
-- Use CSV profile result to determine raw column structure.
-- Create `raw.raw_bc_source`.
-- Create `raw.raw_pic_list`.
-- Load masked CSV into raw tables.
-- Validate row count.
-- Validate column count.
-- Validate source date format.
-- Document raw ingest result.
+- Create approved SQL examples file if not already created in current repo structure.
+- Add Executive Overview KPI SQL.
+- Add latest snapshot KPI control SQL.
+- Add AR Controller aging SQL.
+- Add Top High Risk BC SQL.
+- Add PIC Operation Scoring base SQL.
+- Add BC investigation SQL.
+- Add Data Quality / Exception SQL.
+- Validate each SQL against latest snapshot views.
+- Avoid `SELECT *`.
+- Use explicit `schema.table`.
+- Use `snapshot.vw_latest_bc_daily_status_snapshot` for latest dashboard KPI.
+- Use `snapshot.vw_latest_snapshot_kpi_control` for reconciliation baseline.
+- Use `is_open_unbilled` and `open_rab_exposure_amount`.
+- Exclude REPORTED from active backlog.
+- Do not create actual cashflow logic.
+
+Recommended file:
+
+```text
+01_database/approved_sql_examples/009_approved_kpi_sql_examples.sql
+```
+
+### Step 3 — Continue to Power BI after SQL controls
+
+Do not start Power BI semantic model until SQL KPI controls are validated.
 
 ---
 
-## 11. Recommended Files to Upload in New Chat
+## 12. Recommended Files to Upload in New Chat
 
-In the new chat, upload these files first:
+In the new chat, upload these files first if GitHub access is unavailable:
 
 ### Must upload
 
 ```text
+00_docs/HANDOVER_TO_NEW_CHAT.md
 00_docs/progress_log.md
-00_docs/source_data_preparation.md
-00_docs/source_file_register.md
-00_docs/masked_source_review.md
-00_docs/masked_source_profile_result.md
 01_database/ddl/001_create_database_and_schemas.sql
+01_database/ddl/002_create_and_load_raw_source_tables.sql
+01_database/transform/003_transform_raw_to_clean.sql
 01_database/validation/001_validate_database_and_schemas.sql
-05_tests/source_file_profile_check.py
+01_database/validation/002_validate_raw_source_load.sql
+01_database/validation/003_validate_clean_layer.sql
+01_database/snapshot/004_create_snapshot_tables.sql
+01_database/snapshot/005_create_snapshot_run_function.sql
+01_database/snapshot/006_execute_first_snapshot.sql
+01_database/snapshot/007_create_latest_snapshot_views.sql
+01_database/snapshot/008_validate_snapshot_layer.sql
 ```
 
-### Upload if continuing to Phase 5 Raw Layer Build
+### Useful supporting docs
 
 ```text
-03_sample_data_masked/masked_bc_source_sample.csv
-03_sample_data_masked/masked_pic_list_sample.csv
-```
-
-### Optional but useful
-
-```text
+00_docs/masked_source_profile_result.md
+00_docs/masked_source_review.md
 README.md
 REPO_SCOPE.md
 DATA_SAFETY_CHECKLIST.md
-.gitignore
-.env.example
 ```
 
 ### Also provide GitHub repo link
-
-Yes, include the GitHub link in the new chat:
 
 ```text
 https://github.com/tanzildzikry/finance_ops_dev.git
@@ -572,11 +1321,13 @@ https://github.com/tanzildzikry/finance_ops_dev.git
 
 Important:
 
+```text
 If ChatGPT in the new chat cannot access GitHub directly, upload the files manually.
+```
 
 ---
 
-## 12. Suggested Opening Prompt for New Chat
+## 13. Suggested Opening Prompt for New Chat
 
 Use this prompt in the new chat:
 
@@ -584,18 +1335,37 @@ Use this prompt in the new chat:
 Saya ingin melanjutkan project Finance_Ops_Dev dari handover ini.
 
 Project mode: FINANCE_OPS_PROJECT MODE.
-
-GitHub repo:
-https://github.com/tanzildzikry/finance_ops_dev.git
+GitHub repo: https://github.com/tanzildzikry/finance_ops_dev.git
 
 Current status:
 - Phase 0 Repo Safety Foundation = PASS
 - Phase 1 GitHub Setup = PASS
 - Phase 2 Repository Structure = PASS
 - Phase 3 PostgreSQL Environment Setup = PASS
-- Phase 4 Source / Masked Data Preparation = IN PROGRESS
-- Latest completed step: masked source files added and Python source profile check created
-- Current hold point: review masked_source_profile_result.md, then mark Phase 4.5 PASS and continue to Phase 5 Raw Layer Build
+- Phase 4 Source / Masked Data Preparation = PASS
+- Phase 5 Raw Layer Build = PASS
+- Phase 6 Raw Load Validation = PASS
+- Phase 7 Clean Layer Transform = PASS
+- Phase 8 Clean Layer Validation = PASS
+- Phase 9.1 Snapshot Table DDL = PASS
+- Phase 9.2 Snapshot Run Function = PASS
+- Phase 9.3 First Snapshot Execution = PASS
+- Phase 9.4 Latest Snapshot Views = PASS
+- Phase 9.5 Snapshot Layer Validation = PASS
+
+Latest snapshot:
+- snapshot_run_id = 3
+- snapshot_date = 2026-05-15
+- latest snapshot rows = 8266
+- issue history rows = 8266
+- validation_result = PASS
+- risk_level = LOW
+
+Current hold point:
+After Phase 9.5 Snapshot Layer Validation.
+
+Next phase:
+Phase 10 — Approved SQL Examples / KPI SQL Control.
 
 Please continue using Finance_Ops_Dev business rules:
 - RAB = Revenue / planned billable amount
@@ -604,16 +1374,17 @@ Please continue using Finance_Ops_Dev business rules:
 - REPORTED = excluded from active backlog
 - Source date format = MM/DD/YYYY
 - Actual cashflow is out of scope until cash-in data exists
-- Use is_open_unbilled for open backlog when snapshot v1.1 exists
-- Use open_rab_exposure_amount for open exposure when snapshot v1.1 exists
+- Use is_open_unbilled for open backlog
+- Use open_rab_exposure_amount for open exposure
+- Average Aging Open BC only counts is_open_unbilled = true, event_status = ENDED, and unbilled_aging_days > 0
 
 Please do not restart from zero.
-Please first read the uploaded handover and progress files, then summarize current state, validation status, risk, and next action.
+Please first read the handover and progress log, then summarize current state, validation status, risk, and next action.
 ```
 
 ---
 
-## 13. Validation Philosophy for New Chat
+## 14. Validation Philosophy for New Chat
 
 The assistant must continue with this output style:
 
@@ -645,7 +1416,7 @@ CRITICAL
 
 ---
 
-## 14. Critical Warnings for Continuation
+## 15. Critical Warnings for Continuation
 
 Do not claim production-ready yet.
 
@@ -657,88 +1428,287 @@ NOT YET
 
 Reasons:
 
-- Raw tables not yet created.
-- Masked source not yet loaded into PostgreSQL raw tables.
-- Raw to clean transform not yet implemented in this repo.
-- Snapshot tables not yet created in this local PostgreSQL environment.
-- Power BI not yet connected.
-- Semantic model not yet validated.
-- DAX measures not yet tested.
-- Power BI vs SQL reconciliation not yet performed.
-- User final validation not yet complete.
+- Power BI has not yet been connected.
+- Power BI semantic model has not yet been validated.
+- DAX measures have not yet been created/tested in actual PBIX.
+- Power BI vs SQL reconciliation has not yet been performed.
+- Refresh readiness and deployment controls are not complete.
+- User final validation is not yet complete.
+
+Do not create actual cashflow / cash-in / DSO / collection performance logic yet.
+
+Reason:
+
+```text
+Cash-in / cash receipt data does not exist in current scope.
+```
 
 ---
 
-## 15. Next Phase Planning
+## 16. Known Issues Resolved
 
-### Phase 5 — Raw Layer Build
+### Issue 1 — SQL pasted directly into PowerShell
+
+Status:
+
+```text
+RESOLVED
+```
+
+Resolution:
+
+```text
+Save SQL as .sql and run through psql -f.
+```
+
+---
+
+### Issue 2 — psql \copy multiline parse error
+
+Status:
+
+```text
+RESOLVED
+```
+
+Resolution:
+
+```text
+Write \copy as one full psql meta-command line.
+```
+
+---
+
+### Issue 3 — UTF-8 BOM error in SQL file
+
+Status:
+
+```text
+RESOLVED
+```
+
+Error example:
+
+```text
+ERROR: syntax error at or near "ï»¿"
+```
+
+Resolution:
+
+```text
+Use Python writer with encoding="utf-8" and BOM check.
+```
+
+---
+
+### Issue 4 — Existing clean table blocked DROP
+
+Status:
+
+```text
+RESOLVED
+```
+
+Resolution:
+
+```text
+Avoid DROP ... CASCADE. Use ALTER TABLE ADD COLUMN IF NOT EXISTS + TRUNCATE + INSERT.
+```
+
+---
+
+### Issue 5 — Snapshot function parameter name conflict
+
+Status:
+
+```text
+RESOLVED
+```
+
+Resolution:
+
+```text
+DROP FUNCTION IF EXISTS snapshot.run_bc_daily_snapshot(date, text, text) before CREATE FUNCTION.
+```
+
+---
+
+### Issue 6 — Snapshot responsibility constraint blocked EXCLUDED
+
+Status:
+
+```text
+RESOLVED
+```
+
+Resolution:
+
+```text
+Use responsibility_type = UNKNOWN for REPORTED_EXCLUDED while preserving detected_issue_category and detected_blocker as REPORTED_EXCLUDED.
+```
+
+---
+
+### Issue 7 — Latest snapshot view assumed missing ID columns
+
+Status:
+
+```text
+RESOLVED
+```
+
+Resolution:
+
+```text
+Do not select snapshot_row_id or issue_history_id in latest views because existing tables may not contain those columns.
+```
+
+---
+
+### Issue 8 — Average Aging Open BC included negative / ON GOING rows
+
+Status:
+
+```text
+RESOLVED
+```
+
+Resolution:
+
+```text
+Average Aging Open BC now filters:
+is_open_unbilled = true
+AND event_status = 'ENDED'
+AND unbilled_aging_days > 0
+```
+
+---
+
+## 17. Next Phase Planning
+
+### Phase 10 — Approved SQL Examples / KPI SQL Control
+
+Status:
+
+```text
+NOT STARTED
+```
 
 Planned tasks:
 
-- [ ] Review `masked_source_profile_result.md`.
-- [ ] Create raw DDL based on CSV headers.
-- [ ] Create `raw.raw_bc_source`.
-- [ ] Create `raw.raw_pic_list`.
-- [ ] Create raw load approach.
-- [ ] Load masked CSV into PostgreSQL raw tables.
-- [ ] Validate raw row count.
-- [ ] Validate raw column count.
-- [ ] Validate no unexpected column loss.
-- [ ] Commit raw DDL.
-- [ ] Commit raw validation SQL.
+- [ ] Create approved KPI SQL examples file.
+- [ ] Add Executive Overview KPI SQL.
+- [ ] Add KPI control SQL using `snapshot.vw_latest_snapshot_kpi_control`.
+- [ ] Add AR Controller aging bucket SQL.
+- [ ] Add Top High Risk BC SQL.
+- [ ] Add PIC Operation Scoring base SQL.
+- [ ] Add BC investigation SQL.
+- [ ] Add Data Quality / Exception SQL.
+- [ ] Validate SQL results in PostgreSQL.
+- [ ] Commit approved SQL examples.
 - [ ] Update progress log.
 
-### Phase 6 — Clean Layer Build
+Recommended file:
 
-Planned tasks:
+```text
+01_database/approved_sql_examples/009_approved_kpi_sql_examples.sql
+```
 
-- [ ] Add raw-to-clean transform SQL.
-- [ ] Standardize column names.
-- [ ] Parse dates using MM/DD/YYYY.
-- [ ] Cast amount fields.
-- [ ] Normalize status fields.
-- [ ] Convert invalid/missing PIC to UNCLASSIFIED where applicable.
-- [ ] Validate raw vs clean row count.
-- [ ] Validate key integrity.
-- [ ] Validate duplicate BC risk.
-- [ ] Validate date parsing.
+Validation result:
 
-### Phase 7 — Snapshot Layer Build
+```text
+NOT STARTED
+```
 
-Planned tasks:
+Risk level before control:
 
-- [ ] Create snapshot tables.
-- [ ] Add snapshot v1.1 fields.
-- [ ] Add `is_open_unbilled`.
-- [ ] Add `open_rab_exposure_amount`.
-- [ ] Add `is_reported_excluded`.
-- [ ] Add invoice completion fields.
-- [ ] Add risk and manual review fields.
-- [ ] Run snapshot function.
-- [ ] Validate snapshot row count.
-- [ ] Validate snapshot control fields.
-
-### Phase 10+ — Power BI
-
-Later tasks:
-
-- Connect Power BI to PostgreSQL.
-- Load:
-  - `snapshot.bc_daily_status_snapshot`
-  - `snapshot.vw_daily_movement_summary`
-  - `clean.clean_pic_list`
-- Build semantic model.
-- Create DAX measures.
-- Build pages:
-  - Executive Overview
-  - AR Controller
-  - PIC Operation Scoring
-  - Data Quality / Exception
-- Reconcile Power BI vs approved SQL.
+```text
+MEDIUM
+```
 
 ---
 
-## 16. Handover Validation Result
+### Phase 11 — Power BI Connection
+
+Status:
+
+```text
+NOT STARTED
+```
+
+Planned tasks:
+
+- [ ] Open Power BI Desktop.
+- [ ] Connect to PostgreSQL.
+- [ ] Use Import Mode for first build.
+- [ ] Load latest snapshot view.
+- [ ] Load issue history view if needed.
+- [ ] Load PIC dimension from clean layer.
+- [ ] Create/load date dimension.
+- [ ] Confirm PBIX with embedded real data is not committed.
+
+---
+
+### Phase 12 — Power BI Semantic Model
+
+Status:
+
+```text
+NOT STARTED
+```
+
+Planned tasks:
+
+- [ ] Define fact and dimension tables.
+- [ ] Create relationships.
+- [ ] Avoid many-to-many unless explicitly justified.
+- [ ] Set single-direction filtering.
+- [ ] Hide technical columns.
+- [ ] Validate cardinality and filter direction.
+
+---
+
+### Phase 13 — DAX Measure Build
+
+Status:
+
+```text
+NOT STARTED
+```
+
+Planned tasks:
+
+- [ ] Create measure table.
+- [ ] Use snapshot fields.
+- [ ] Use `open_rab_exposure_amount`.
+- [ ] Use `is_open_unbilled`.
+- [ ] Use Average Aging Open BC rule.
+- [ ] Avoid recreating complex SQL logic in DAX.
+
+---
+
+### Phase 14 — Power BI vs SQL Reconciliation
+
+Status:
+
+```text
+NOT STARTED
+```
+
+Planned tasks:
+
+- [ ] Reconcile Power BI cards to approved SQL.
+- [ ] Reconcile open BC count.
+- [ ] Reconcile open RAB exposure.
+- [ ] Reconcile high risk BC count.
+- [ ] Reconcile high risk RAB exposure.
+- [ ] Reconcile REPORTED excluded count.
+- [ ] Reconcile UNCLASSIFIED count.
+- [ ] Reconcile average aging.
+
+---
+
+## 18. Handover Validation Result
 
 Validation result:
 
@@ -755,5 +1725,5 @@ LOW
 Reason:
 
 ```text
-Project purpose, repo structure, PostgreSQL foundation, GitHub link, completed phases, current hold point, next actions, and continuation rules are documented.
+Project purpose, repo structure, active business rules, PostgreSQL raw-clean-snapshot state, completed phases through Phase 9.5, known issues, current hold point, next actions, and continuation rules are documented.
 ```
