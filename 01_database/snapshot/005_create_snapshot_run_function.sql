@@ -357,7 +357,7 @@ BEGIN
             ELSE 'UNKNOWN_BLOCKER'
         END AS detected_blocker,
         CASE
-            WHEN f.calc_is_reported_excluded = true THEN 'EXCLUDED'
+            WHEN f.calc_is_reported_excluded = true THEN 'UNKNOWN'
             ELSE 'UNKNOWN'
         END AS responsibility_type,
         CASE
