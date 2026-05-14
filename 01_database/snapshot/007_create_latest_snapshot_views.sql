@@ -172,7 +172,11 @@ SELECT
     COUNT(*) FILTER (WHERE is_reported_excluded = true) AS reported_excluded_bc_count,
     COUNT(*) FILTER (WHERE is_unclassified_pic = true) AS unclassified_pic_count,
     COUNT(*) FILTER (WHERE needs_manual_review_flag = true) AS manual_review_bc_count,
-    AVG(unbilled_aging_days) FILTER (WHERE is_open_unbilled = true) AS average_aging_open_bc
+    AVG(unbilled_aging_days) FILTER (
+        WHERE is_open_unbilled = true
+          AND event_status = 'ENDED'
+          AND unbilled_aging_days > 0
+    ) AS average_aging_open_bc
 FROM snapshot.vw_latest_bc_daily_status_snapshot
 GROUP BY
     snapshot_run_id,
