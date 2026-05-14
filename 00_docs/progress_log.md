@@ -2,16 +2,16 @@
 
 ## Current Status
 
-Project: Finance_Ops_Dev  
-Repository: finance_ops_dev  
-GitHub Repository: https://github.com/tanzildzikry/finance_ops_dev.git  
-Current Phase: Phase 11 — Power BI Connection / Semantic Model Preparation  
-Current Hold Point: Phase 10 completed; approved KPI SQL controls validated and ready for Power BI preparation  
-Last Updated: 2026-05-15  
+Project: Finance_Ops_Dev
+Repository: finance_ops_dev
+GitHub Repository: https://github.com/tanzildzikry/finance_ops_dev.git
+Current Phase: Phase 11 — Power BI Connection / Semantic Model Preparation
+Current Hold Point: Phase 11 completed; Power BI source readiness validated and ready for semantic model build
+Last Updated: 2026-05-15
 
-Current validation result: PASS up to Phase 10  
-Current risk level after control: LOW  
-Production readiness: NOT YET  
+Current validation result: PASS up to Phase 11
+Current risk level after control: LOW
+Production readiness: NOT YET
 
 ---
 
@@ -240,7 +240,7 @@ Commit message:
 chore: initialize repo safety foundation
 ```
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -270,7 +270,7 @@ origin  https://github.com/tanzildzikry/finance_ops_dev.git (fetch)
 origin  https://github.com/tanzildzikry/finance_ops_dev.git (push)
 ```
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -310,7 +310,7 @@ Commit message:
 chore: add project folder structure
 ```
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -353,7 +353,7 @@ C:\Program Files\PostgreSQL\18\bin
 
 was added to user PATH.
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -386,7 +386,7 @@ Control note:
 Windows console code page warning appeared but does not block database setup.
 ```
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -413,7 +413,7 @@ Commit message:
 feat: add database and schema setup script
 ```
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -470,7 +470,7 @@ snapshot
 (6 rows)
 ```
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -521,7 +521,7 @@ Commit message:
 test: add database and schema validation script
 ```
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -622,7 +622,7 @@ PowerShell script was abandoned for source profiling because of parsing and enco
 Python script is now the accepted approach for source profile checking.
 ```
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -703,7 +703,7 @@ Commit message:
 feat: add raw source table load script
 ```
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -768,7 +768,7 @@ Commit message:
 test: add raw source load validation
 ```
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -848,7 +848,7 @@ Commit message:
 feat: add raw to clean transform
 ```
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -915,7 +915,7 @@ Commit message:
 test: add clean layer validation
 ```
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -998,7 +998,7 @@ Commit message:
 feat: add snapshot table ddl
 ```
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -1056,7 +1056,7 @@ Commit message:
 feat: add snapshot run function
 ```
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -1127,7 +1127,7 @@ Commit message:
 feat: execute first bc daily snapshot
 ```
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -1220,7 +1220,7 @@ feat: add latest snapshot views
 fix: refine average aging open bc logic
 ```
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -1299,7 +1299,7 @@ Commit message:
 test: add snapshot layer validation
 ```
 
-Validation result: PASS  
+Validation result: PASS
 Risk level after control: LOW
 
 ---
@@ -1485,27 +1485,63 @@ PASS
 Next Phase:
 Phase 11 — Power BI Semantic Model / Dashboard Model Preparation
 
-# Phase 11 — Power BI Connection
+# Phase 11 ? Power BI Connection / Semantic Model Preparation
 
-Status: NOT STARTED
+Status: PASS
+Validation Date: 2026-05-15
+Risk Level: LOW
+Technical Commit: 514b3c2 ? Add phase 11 Power BI source readiness validation
 
-Pending tasks:
+## Purpose
 
-- [ ] Open Power BI Desktop.
-- [ ] Connect Power BI to PostgreSQL.
-- [ ] Use Import Mode for first build.
-- [ ] Load `snapshot.vw_latest_bc_daily_status_snapshot`.
-- [ ] Load `snapshot.vw_latest_snapshot_kpi_control`.
-- [ ] Load `snapshot.vw_latest_bc_daily_issue_history`.
-- [ ] Load `clean.clean_pic_list`.
-- [ ] Create or load `dim_date`.
-- [ ] Refresh data.
-- [ ] Confirm PBIX is not committed if it contains embedded real data.
+Validate Power BI source readiness before semantic model build, DAX development, and dashboard visual creation.
 
-Validation result: NOT STARTED  
-Risk level before control: MEDIUM
+## Files Created
 
----
+- `01_database/validation/011_validate_powerbi_source_readiness.sql`
+- `02_powerbi/semantic_model/phase11_powerbi_connection_plan.md`
+
+## Validation Output
+
+- `total_checks = 67`
+- `passed_checks = 67`
+- `failed_checks = 0`
+- `phase11_validation_result = PASS`
+- `risk_level = LOW`
+
+## Controls Validated
+
+- Required Power BI source objects exist.
+- Required Power BI source columns exist.
+- Latest status view row count matches KPI control total BC count.
+- Latest issue history row count matches KPI control total BC count.
+- KPI control view returns one row.
+- PIC dimension is non-empty.
+- BC key is not null or blank.
+- BC key is unique in latest status view.
+- BC key is unique in latest issue history view.
+- Snapshot history key is unique by snapshot run and BC.
+- PIC relationship has no orphan records excluding `UNCLASSIFIED`.
+
+## Approved Power BI Source Objects
+
+- `snapshot.vw_latest_bc_daily_status_snapshot`
+- `snapshot.vw_latest_snapshot_kpi_control`
+- `snapshot.vw_latest_bc_daily_issue_history`
+- `snapshot.bc_daily_status_snapshot`
+- `clean.clean_pic_list`
+
+## Validation Result
+
+PASS
+
+## Risk Level
+
+LOW
+
+## Next Phase
+
+Phase 12 ? Power BI Semantic Model Build / Relationship Setup
 
 # Phase 12 — Power BI Semantic Model
 
@@ -1527,7 +1563,7 @@ Pending tasks:
 - [ ] Validate filter direction.
 - [ ] Validate no many-to-many issue unless explicitly bridged.
 
-Validation result: NOT STARTED  
+Validation result: NOT STARTED
 Risk level before control: MEDIUM
 
 ---
@@ -1555,7 +1591,7 @@ Pending tasks:
 - [ ] Save DAX library to repo.
 - [ ] Test DAX in actual PBIX.
 
-Validation result: NOT STARTED  
+Validation result: NOT STARTED
 Risk level before control: MEDIUM
 
 ---
@@ -1578,7 +1614,7 @@ Pending tasks:
 - [ ] Create top high risk BC table.
 - [ ] Validate page filters.
 
-Validation result: NOT STARTED  
+Validation result: NOT STARTED
 Risk level before control: MEDIUM
 
 ---
@@ -1597,7 +1633,7 @@ Pending tasks:
 - [ ] Add AR-focused slicers.
 - [ ] Validate AR KPI logic.
 
-Validation result: NOT STARTED  
+Validation result: NOT STARTED
 Risk level before control: MEDIUM
 
 ---
@@ -1617,7 +1653,7 @@ Pending tasks:
 - [ ] Validate no many-to-many issue.
 - [ ] Ensure UNCLASSIFIED is not treated as PIC performance penalty.
 
-Validation result: NOT STARTED  
+Validation result: NOT STARTED
 Risk level before control: MEDIUM
 
 ---
@@ -1636,7 +1672,7 @@ Pending tasks:
 - [ ] Create missing/invalid field exception table.
 - [ ] Validate exception logic.
 
-Validation result: NOT STARTED  
+Validation result: NOT STARTED
 Risk level before control: MEDIUM
 
 ---
@@ -1661,7 +1697,7 @@ Pending tasks:
 - [ ] Document mismatch if any.
 - [ ] Fix DAX/model if mismatch.
 
-Validation result: NOT STARTED  
+Validation result: NOT STARTED
 Risk level before control: MEDIUM
 
 ---
@@ -1683,7 +1719,7 @@ Pending tasks:
 - [ ] Check measure formatting.
 - [ ] Check tooltip clarity.
 
-Validation result: NOT STARTED  
+Validation result: NOT STARTED
 Risk level before control: MEDIUM
 
 ---
@@ -1719,7 +1755,7 @@ Pending documentation:
 - [ ] Known limitations.
 - [ ] Next improvement backlog.
 
-Validation result: IN PROGRESS  
+Validation result: IN PROGRESS
 Risk level before control: LOW
 
 ---
@@ -1740,7 +1776,7 @@ Pending tasks:
 - [ ] Prepare issue log.
 - [ ] Prepare next sprint backlog.
 
-Validation result: NOT STARTED  
+Validation result: NOT STARTED
 Risk level before control: MEDIUM
 
 ---
@@ -2126,17 +2162,17 @@ PASS or NEEDS REVIEW with documented exceptions
 Validation result:
 
 ```text
-PASS up to Phase 10
+PASS up to Phase 11
 ```
 
 Risk level:
 
 ```text
-LOW after Phase 10 controls
+LOW after Phase 11 controls
 ```
 
 Next phase risk before control:
 
 ```text
-MEDIUM for Phase 11 Power BI Connection / Semantic Model Preparation
+MEDIUM for Phase 12 Power BI Semantic Model Build / Relationship Setup
 ```
