@@ -18,7 +18,7 @@ This phase validates that Power BI can safely consume stable snapshot and clean-
 | Current dashboard fact | `snapshot.vw_latest_bc_daily_status_snapshot` | Main current-state fact |
 | KPI reconciliation | `snapshot.vw_latest_snapshot_kpi_control` | SQL control / reconciliation table |
 | Issue drill-through | `snapshot.vw_latest_bc_daily_issue_history` | Issue detail / investigation table |
-| Daily movement / trend | `snapshot.bc_daily_status_snapshot` | Historical snapshot fact |
+| Daily movement / trend | `snapshot.vw_daily_status_snapshot_latest_per_day` | Historical snapshot fact |
 | PIC dimension | `clean.clean_pic_list` | PIC dimension |
 
 ## Recommended Initial Connection Mode
@@ -61,7 +61,7 @@ Use: issue drill-through and blocker investigation.
 
 ### FactSnapshotDaily
 
-Source: `snapshot.bc_daily_status_snapshot`
+Source: `snapshot.vw_daily_status_snapshot_latest_per_day`
 
 Grain: one row per BC per snapshot run.
 
@@ -182,8 +182,61 @@ LOW
 
 ## Next Phase
 
-Phase 12 ? Power BI Semantic Model Build / Relationship Setup
+Phase 12 - Power BI Semantic Model Build / Relationship Setup
 
 ## Hold Point
 
 Do not proceed to DAX or visual build until the Power BI model is connected and table/relationship setup is confirmed.
+---
+
+## Phase 11.1 Patch - Daily Latest Snapshot Views
+
+Status: PASS  
+Validation Date: 2026-05-15  
+Risk Level: LOW
+
+### Purpose
+
+Prevent Power BI movement/trend visuals from double counting when multiple snapshot runs exist on the same `snapshot_date`.
+
+### Approved Movement Sources
+
+Use these views for movement/trend:
+
+```text
+snapshot.vw_daily_status_snapshot_latest_per_day
+snapshot.vw_daily_kpi_control_latest_per_day
+```
+
+Do not use the base table `snapshot.bc_daily_status_snapshot` directly for Power BI movement/trend unless a filter is explicitly applied to keep only the latest completed PASS run per snapshot date.
+
+### Validation Result
+
+```text
+snapshot.vw_daily_latest_snapshot_run            PASS
+snapshot.vw_daily_status_snapshot_latest_per_day PASS
+snapshot.vw_daily_kpi_control_latest_per_day     PASS
+```
+
+Latest-per-day row count validation:
+
+```text
+snapshot_date = 2026-05-15
+snapshot_run_id = 3
+expected_row_count = 8266
+actual_row_count = 8266
+validation_result = PASS
+```
+
+KPI control latest-per-day baseline:
+
+```text
+total_bc_count = 8266
+open_bc_count = 8145
+open_rab_exposure_amount = 4,956,993,250,804.46
+high_risk_bc_count = 3
+reported_excluded_bc_count = 112
+unclassified_pic_count = 12
+manual_review_bc_count = 20
+average_aging_open_bc = 51.0055248618784530
+```
