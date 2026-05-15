@@ -77,3 +77,75 @@ Important decision:
 Current validation state:
 - PASS STRUCTURE ONLY
 - Full Phase 12 PASS still requires PBIX relationship validation and Power BI KPI card reconciliation.
+
+---
+
+## Phase 12 — Documentation Folder Reorganization
+
+Marker: PHASE_12_DOCS_FOLDER_REORGANIZATION_2026_05_15
+
+Updated: 2026-05-15  
+Status: PASS  
+Validation Result: PASS  
+Risk Level: LOW  
+
+### Summary
+
+Documentation structure has been reorganized for better maintainability.
+
+### New Documentation Structure
+
+00_docs/status_and_project/
+  current_status.md
+  decision_log.md
+  handover_to_new_chat_v1.md
+  progress_log.md
+  project_memory.md
+
+00_docs/sources/
+  masked_source_profile_result.md
+  masked_source_review.md
+  source_data_preparation.md
+  source_file_register.md
+
+00_docs/phase_12/
+  README.md
+  phase_12_semantic_model_blueprint.md
+  phase_12_relationship_matrix.md
+  phase_12_powerbi_validation_checklist.md
+  phase_12_measure_refactor_notes.md
+  phase_12_technical_patch_README.md
+
+### Decision
+
+Global project-control documents are stored in:
+
+00_docs/status_and_project/
+
+Source documentation is stored in:
+
+00_docs/sources/
+
+Phase-specific documentation is stored in:
+
+00_docs/phase_12/
+
+The handover file has been renamed to:
+
+handover_to_new_chat_v1.md
+
+### Control
+
+This change is documentation organization only.
+
+No SQL, DAX, Power BI logic, KPI definition, or business rule was changed.
+
+### Next Documentation Rule
+
+Use the new documentation structure going forward:
+
+- status/project updates must use 00_docs/status_and_project/
+- source documentation must use 00_docs/sources/
+- phase-specific documentation must use its own phase folder
+- progress_log.md must remain cumulative from Phase 0
+- handover_to_new_chat_v1.md must remain cumulative / append-safe
