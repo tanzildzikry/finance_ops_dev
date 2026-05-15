@@ -1,0 +1,160 @@
+
+/*
+Finance_Ops_Dev - Phase 12 Canonical Measures
+Generated: 2026-05-15
+
+Purpose:
+- Canonical minimal DAX measure set for Phase 12 Power BI semantic model.
+- Reduce ambiguity below 3%.
+- Reduce redundant measure risk below 2%.
+- Keep DAX simple.
+
+Assumed Power BI table names:
+- Fact_Current_BC
+- Fact_Movement_BC
+- Control_Current_KPI
+- Control_Movement_KPI
+- Dim_PIC
+- Dim_BC
+- Dim_Date
+- _Measures
+
+Important:
+- Do not create by-PIC / by-Customer / by-Division measures.
+- Dimension breakdown must come from filter context.
+- Do not use billing_status <> "BILLED" as open logic.
+- Do not create actual cashflow, DSO, collection performance, or payment overdue final measures.
+*/
+
+-- ---------------------------------------------------------------------------
+-- Current KPI Measures
+-- ---------------------------------------------------------------------------
+
+Current Total BC Count =
+COUNTROWS('Fact_Current_BC')
+
+Current Open BC Count =
+CALCULATE(
+    [Current Total BC Count],
+    'Fact_Current_BC'[is_open_unbilled] = TRUE()
+)
+
+Current Open RAB Exposure =
+SUM('Fact_Current_BC'[open_rab_exposure_amount])
+
+Current High Risk BC Count =
+CALCULATE(
+    [Current Total BC Count],
+    'Fact_Current_BC'[high_risk_flag] = TRUE()
+)
+
+Current High Risk RAB Exposure =
+CALCULATE(
+    [Current Open RAB Exposure],
+    'Fact_Current_BC'[high_risk_flag] = TRUE()
+)
+
+Current Reported Excluded BC Count =
+CALCULATE(
+    [Current Total BC Count],
+    'Fact_Current_BC'[is_reported_excluded] = TRUE()
+)
+
+Current UNCLASSIFIED PIC Count =
+CALCULATE(
+    [Current Total BC Count],
+    'Fact_Current_BC'[is_unclassified_pic] = TRUE()
+)
+
+Current Manual Review BC Count =
+CALCULATE(
+    [Current Total BC Count],
+    'Fact_Current_BC'[needs_manual_review_flag] = TRUE()
+)
+
+Current Average Aging Open BC =
+CALCULATE(
+    AVERAGE('Fact_Current_BC'[unbilled_aging_days]),
+    'Fact_Current_BC'[is_open_unbilled] = TRUE(),
+    'Fact_Current_BC'[event_status] = "ENDED",
+    'Fact_Current_BC'[unbilled_aging_days] > 0
+)
+
+-- ---------------------------------------------------------------------------
+-- Control KPI Measures
+-- Control_Current_KPI must be disconnected.
+-- ---------------------------------------------------------------------------
+
+Control Total BC Count =
+MAX('Control_Current_KPI'[total_bc_count])
+
+Control Open BC Count =
+MAX('Control_Current_KPI'[open_bc_count])
+
+Control Open RAB Exposure =
+MAX('Control_Current_KPI'[open_rab_exposure_amount])
+
+Control High Risk BC Count =
+MAX('Control_Current_KPI'[high_risk_bc_count])
+
+Control High Risk RAB Exposure =
+MAX('Control_Current_KPI'[high_risk_rab_exposure_amount])
+
+Control Reported Excluded BC Count =
+MAX('Control_Current_KPI'[reported_excluded_bc_count])
+
+Control UNCLASSIFIED PIC Count =
+MAX('Control_Current_KPI'[unclassified_pic_count])
+
+Control Manual Review BC Count =
+MAX('Control_Current_KPI'[manual_review_bc_count])
+
+Control Average Aging Open BC =
+MAX('Control_Current_KPI'[average_aging_open_bc])
+
+-- ---------------------------------------------------------------------------
+-- Reconciliation Measures
+-- ---------------------------------------------------------------------------
+
+Recon Open BC Diff =
+[Current Open BC Count] - [Control Open BC Count]
+
+Recon Open RAB Diff =
+[Current Open RAB Exposure] - [Control Open RAB Exposure]
+
+Recon High Risk BC Diff =
+[Current High Risk BC Count] - [Control High Risk BC Count]
+
+Recon Average Aging Diff =
+[Current Average Aging Open BC] - [Control Average Aging Open BC]
+
+Recon KPI Status =
+IF(
+    [Recon Open BC Diff] = 0
+        && ABS([Recon Open RAB Diff]) < 1
+        && [Recon High Risk BC Diff] = 0
+        && ABS([Recon Average Aging Diff]) < 0.0001,
+    "PASS",
+    "NEEDS REVIEW"
+)
+
+-- ---------------------------------------------------------------------------
+-- Movement Guardrail Measures
+-- ---------------------------------------------------------------------------
+
+Movement Readiness Flag =
+VAR SnapshotDateCount =
+    DISTINCTCOUNT('Fact_Movement_BC'[snapshot_date])
+RETURN
+    IF(SnapshotDateCount >= 2, 1, 0)
+
+Movement Readiness Status =
+IF(
+    [Movement Readiness Flag] = 1,
+    "PASS - Movement trend can be interpreted",
+    "STRUCTURE ONLY - Need at least 2 latest-per-day snapshot dates"
+)
+
+-- ---------------------------------------------------------------------------
+-- End of Phase 12 canonical measures.
+-- ---------------------------------------------------------------------------
