@@ -1727,3 +1727,84 @@ Reason:
 ```text
 Project purpose, repo structure, active business rules, PostgreSQL raw-clean-snapshot state, completed phases through Phase 9.5, known issues, current hold point, next actions, and continuation rules are documented.
 ```
+
+---
+
+## Phase 12 Handover Update — Semantic Model Refactor
+
+Marker: PHASE_12_HANDOVER_APPEND_2026_05_15
+
+Updated: 2026-05-15
+
+### Current Phase
+
+Phase 12 — Power BI Semantic Model Build / Relationship Setup
+
+Status:
+- IN PROGRESS
+- NEEDS REVIEW
+- Risk Level: LOW
+
+### Critical Continuity Rules
+
+- Use Finance_Ops_Project Mode.
+- progress_log.md must remain cumulative from Phase 0.
+- Do not overwrite cumulative documentation files.
+- Documentation and repo updates should be terminal-first / script-first.
+- Use Python-first file generation.
+- Use UTF-8 without BOM.
+- For cumulative files, use append-safe patching with marker checks.
+- If a script reduces line count of progress_log.md or HANDOVER_TO_NEW_CHAT.md, the patch is BLOCKED.
+
+### Phase 12 Approved Model
+
+Power BI should use:
+
+- Dim_Date
+- Dim_PIC
+- Dim_BC
+- Fact_Current_BC
+- Fact_Movement_BC
+- Fact_Issue_Current
+- Control_Current_KPI
+- Control_Movement_KPI
+- _Measures
+
+### Phase 12 Relationship Rules
+
+- Dimension to fact only.
+- Cardinality 1:*.
+- Filter direction Single.
+- No active fact-to-fact relationship.
+- No relationship from control tables to facts.
+- No bidirectional filter.
+- No uncontrolled many-to-many relationship.
+- Dim_Date active only to Fact_Movement_BC.
+- Avoid active Dim_Date to Fact_Current_BC.
+
+### Phase 12 DAX Rules
+
+- Canonical measures only.
+- Prefixes:
+  - Current
+  - Control
+  - Recon
+  - Movement
+- No by-PIC / by-Customer / by-Division measures.
+- No duplicate synonym measures.
+- Use is_open_unbilled and open_rab_exposure_amount.
+- Do not use billing_status <> 'BILLED' as open backlog logic.
+- Do not create cashflow actual, DSO, collection performance, or payment overdue final measures.
+
+### Movement Rule
+
+Movement trend is not meaningful until latest-per-day distinct_snapshot_dates >= 2.
+
+Current condition:
+- distinct_snapshot_dates = 1
+- movement source is structurally safe
+- movement trend insight must not be interpreted yet
+
+### Next Step
+
+Proceed to create Phase 12 reporting SQL views and validation script.
