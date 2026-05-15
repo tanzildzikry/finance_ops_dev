@@ -1,1 +1,711 @@
-# Phase 12 — Power BI Naming, Relationship, Measure, and Load Contract\n\n**Project:** Finance_Ops_Dev  \n**Phase:** Phase 12 — Power BI Semantic Model Build / Relationship Setup  \n**Document Type:** Power BI Semantic Model Contract  \n**Recommended File Name:** `phase_12_powerbi_naming_relationship_and_measure_contract.md`  \n**Status:** ACTIVE CONTRACT  \n**Validation Status:** NEEDS REVIEW until PBIX validation is completed  \n**Risk Level:** MEDIUM before PBIX validation, LOW after all relationship and KPI reconciliation checks pass  \n\n---\n\n## 1. Purpose\n\nThis document defines the approved Power BI naming, relationship, control table, measure naming, canonical measure, DAX logic, column notes, and load rules for Phase 12.\n\nThis document is intended to prevent ambiguity when building the Power BI semantic model.\n\nThe main objectives are:\n\n1. Use only curated PostgreSQL reporting views in Power BI.\n2. Keep Power BI table names business-readable.\n3. Prevent fact-to-fact relationships.\n4. Prevent bidirectional and uncontrolled many-to-many relationships.\n5. Keep control tables disconnected.\n6. Keep DAX measures canonical and minimal.\n7. Ensure breakdown by PIC, customer, BC, division, and date comes from dimension filter context, not duplicated measures.\n8. Prevent misuse of movement data before movement is meaningful.\n9. Prevent use of raw, clean, or base snapshot tables in the main PBIX model.\n\n---\n\n## 2. Power BI Table Naming Mapping\n\nUse the following table naming convention in Power BI.\n\n| PostgreSQL Source | Power BI Table Name | Role |\n|---|---|---|\n| `reporting.fact_current_bc` | `Fact_Current_BC` | Current/latest dashboard fact |\n| `reporting.fact_movement_bc` | `Fact_Movement_BC` | Movement/trend fact |\n| `reporting.fact_issue_current` | `Fact_Issue_Current` | Issue drill-through/detail |\n| `reporting.control_current_kpi` | `Control_Current_KPI` | Disconnected current KPI reconciliation |\n| `reporting.control_movement_kpi` | `Control_Movement_KPI` | Disconnected movement KPI control |\n| `reporting.dim_pic` | `Dim_PIC` | PIC dimension |\n| `reporting.dim_bc` | `Dim_BC` | BC dimension / bridge |\n| `reporting.dim_date` | `Dim_Date` | Date dimension |\n| DAX-only table | `_Measures` | Measure container |\n\n---\n\n## 3. Power BI Relationship Mapping\n\nCreate only the relationships listed below.\n\n| From | To | Cardinality | Direction | Active |\n|---|---|---|---|---|\n| `Dim_PIC[pic_code]` | `Fact_Current_BC[pic_internal_code]` | `1:*` | Single | Yes |\n| `Dim_PIC[pic_code]` | `Fact_Movement_BC[pic_internal_code]` | `1:*` | Single | Yes |\n| `Dim_BC[bc_number]` | `Fact_Current_BC[bc_number]` | `1:*` | Single | Yes |\n| `Dim_BC[bc_number]` | `Fact_Movement_BC[bc_number]` | `1:*` | Single | Yes |\n| `Dim_BC[bc_number]` | `Fact_Issue_Current[bc_number]` | `1:*` | Single | Yes |\n| `Dim_Date[date]` | `Fact_Movement_BC[snapshot_date]` | `1:*` | Single | Yes |\n\n---\n\n## 4. Relationship Rules\n\nDo not create relationships outside the approved relationship mapping.\n\nThe following are not allowed:\n\n1. Fact-to-fact relationship.\n2. Control table relationship.\n3. Bidirectional filter.\n4. Uncontrolled many-to-many relationship.\n5. Active `Dim_Date` relationship to `Fact_Current_BC`.\n\n---\n\n## 5. Control Table Rule\n\nThe following tables must remain disconnected:\n\n```text\nControl_Current_KPI\nControl_Movement_KPI\n```\n\nThese tables are used only for reconciliation and control baseline.\n\nThey must not be used as filtering dimensions.\n\nControl tables should not be connected to:\n\n1. Fact tables.\n2. Dimension tables.\n3. Other control tables.\n\n---\n\n## 6. Measure Naming Convention\n\nUse strict measure prefixes.\n\n| Prefix | Function |\n|---|---|\n| `Current ...` | KPI from `Fact_Current_BC` |\n| `Control ...` | KPI baseline from `Control_Current_KPI` |\n| `Recon ...` | Difference between current KPI and control KPI |\n| `Movement ...` | Guardrail / movement measures |\n\n---\n\n## 7. Forbidden Measure Naming Pattern\n\nDo not create measure variants that duplicate dimension filter context.\n\nDo not create measures such as:\n\n```text\nOpen BC Count by PIC\nOpen RAB Exposure by PIC\nPIC Open RAB Exposure\nOpen BC by Customer\nOpen Exposure by Division\nTotal Open Backlog\nUnbilled Amount\nOpen RAB\n```\n\nBreakdown by PIC, customer, division, BC, or date must come from dimension filter context.\n\nExamples:\n\n1. PIC breakdown must come from `Dim_PIC`.\n2. BC breakdown must come from `Dim_BC`.\n3. Movement date breakdown must come from `Dim_Date`.\n4. Issue drill-through must use `Dim_BC` filter path.\n\n---\n\n## 8. Canonical Measure List\n\nOnly the following canonical measures should be created for Phase 12 baseline.\n\nAdditional measures require explicit review before being added.\n\n---\n\n## 8.1 Current KPI Measures\n\n| Measure Name | Source Table | Purpose |\n|---|---|---|\n| `Current Total BC Count` | `Fact_Current_BC` | Count all current BC rows |\n| `Current Open BC Count` | `Fact_Current_BC` | Count open unbilled BC |\n| `Current Open RAB Exposure` | `Fact_Current_BC` | Sum open RAB exposure |\n| `Current High Risk BC Count` | `Fact_Current_BC` | Count high risk BC |\n| `Current High Risk RAB Exposure` | `Fact_Current_BC` | Sum high risk RAB exposure |\n| `Current Reported Excluded BC Count` | `Fact_Current_BC` | Count reported/excluded BC |\n| `Current UNCLASSIFIED PIC Count` | `Fact_Current_BC` | Count BC assigned to UNCLASSIFIED PIC |\n| `Current Manual Review BC Count` | `Fact_Current_BC` | Count BC requiring manual review |\n| `Current Average Aging Open BC` | `Fact_Current_BC` | Average aging for valid open ended BC |\n\n---\n\n## 8.2 Control KPI Measures\n\n| Measure Name | Source Table | Purpose |\n|---|---|---|\n| `Control Total BC Count` | `Control_Current_KPI` | Control baseline for total BC |\n| `Control Open BC Count` | `Control_Current_KPI` | Control baseline for open BC |\n| `Control Open RAB Exposure` | `Control_Current_KPI` | Control baseline for open RAB exposure |\n| `Control High Risk BC Count` | `Control_Current_KPI` | Control baseline for high risk BC |\n| `Control High Risk RAB Exposure` | `Control_Current_KPI` | Control baseline for high risk RAB exposure |\n| `Control Reported Excluded BC Count` | `Control_Current_KPI` | Control baseline for reported/excluded BC |\n| `Control UNCLASSIFIED PIC Count` | `Control_Current_KPI` | Control baseline for UNCLASSIFIED PIC |\n| `Control Manual Review BC Count` | `Control_Current_KPI` | Control baseline for manual review BC |\n| `Control Average Aging Open BC` | `Control_Current_KPI` | Control baseline for average aging open BC |\n\n---\n\n## 8.3 Reconciliation Measures\n\n| Measure Name | Purpose |\n|---|---|\n| `Recon Open BC Diff` | Difference between current open BC and control open BC |\n| `Recon Open RAB Diff` | Difference between current open RAB exposure and control open RAB exposure |\n| `Recon High Risk BC Diff` | Difference between current high risk BC and control high risk BC |\n| `Recon Average Aging Diff` | Difference between current average aging and control average aging |\n| `Recon KPI Status` | Overall KPI reconciliation status |\n\n---\n\n## 8.4 Movement Guardrail Measures\n\n| Measure Name | Purpose |\n|---|---|\n| `Movement Readiness Flag` | Indicates whether movement has enough latest-per-day snapshot dates |\n| `Movement Readiness Status` | Text status for movement readiness |\n\n---\n\n## 9. Core DAX Logic Rule\n\nThe Power BI model must use the prepared SQL/snapshot fields.\n\nDo not recreate complex SQL logic in DAX.\n\n---\n\n## 9.1 Open Backlog Logic\n\nUse:\n\n```text\nis_open_unbilled = TRUE\n```\n\nDo not use:\n\n```text\nbilling_status <> "BILLED"\n```\n\nReason:\n\n`billing_status <> "BILLED"` is too simplistic and can incorrectly include reported/excluded records or fail to account for partial invoice and invoice completion logic.\n\n---\n\n## 9.2 Open Exposure Logic\n\nUse:\n\n```text\nopen_rab_exposure_amount\n```\n\nDo not calculate open exposure from raw `rab_budget_amount` with simplistic status filtering.\n\nCorrect approach:\n\n```text\nSUM(Fact_Current_BC[open_rab_exposure_amount])\n```\n\n---\n\n## 9.3 Average Aging Logic\n\nUse the following logic:\n\n```text\nis_open_unbilled = TRUE\nevent_status = "ENDED"\nunbilled_aging_days > 0\n```\n\nAverage aging should not include:\n\n1. Closed/fully invoiced BC.\n2. Reported/excluded BC.\n3. ON GOING event if the KPI is intended to represent aging after event completion.\n4. Zero or invalid aging days.\n\n---\n\n## 10. Important Column Notes\n\n---\n\n## 10.1 Dim_PIC\n\n`reporting.dim_pic` already contains a synthetic row for unclassified PIC.\n\nExpected synthetic row:\n\n| Column | Value |\n|---|---|\n| `pic_code` | `UNCLASSIFIED` |\n| `pic_full_name` | `UNCLASSIFIED - PIC not input in ERP` |\n| `division_code` | `UNCLASSIFIED` |\n| `pic_status` | `ACTIVE` |\n| `is_unclassified_pic` | `TRUE` |\n\nThis row is required so that orphan PIC count becomes zero.\n\n`UNCLASSIFIED` is a correction bucket.\n\nIt must not be treated as PIC performance penalty.\n\n---\n\n## 10.2 Dim_Date\n\nCurrent condition:\n\n```text\nDim_Date rows = 1\ndistinct_date = 1\n```\n\nThis is expected because movement latest-per-day snapshot date is currently only one date.\n\n`Dim_Date` is only actively related to:\n\n```text\nFact_Movement_BC[snapshot_date]\n```\n\nDo not create active relationship from `Dim_Date` to `Fact_Current_BC`.\n\n---\n\n## 10.3 Movement\n\nMovement source is structurally safe, but movement trend is not yet analytically meaningful.\n\nCurrent condition:\n\n```text\nlatest-per-day distinct_snapshot_dates = 1\n```\n\nMovement trend must not be interpreted until:\n\n```text\nlatest-per-day distinct_snapshot_dates >= 2\n```\n\nAllowed at this stage:\n\n1. Build movement table.\n2. Build movement relationship to `Dim_Date`.\n3. Build movement readiness guardrail.\n4. Display movement readiness warning.\n\nNot allowed at this stage:\n\n1. Interpret movement trend as business insight.\n2. Claim daily increase/decrease as real movement.\n3. Use movement delta for management decision before at least two latest-per-day snapshot dates exist.\n\n---\n\n## 11. Power BI Load Rule\n\nLoad only curated reporting views into the main PBIX model.\n\nApproved objects:\n\n```text\nreporting.fact_current_bc\nreporting.fact_movement_bc\nreporting.fact_issue_current\nreporting.control_current_kpi\nreporting.control_movement_kpi\nreporting.dim_pic\nreporting.dim_bc\nreporting.dim_date\n```\n\nDo not load the following objects into the main PBIX model:\n\n```text\nraw.*\nclean.clean_bc\nsnapshot.bc_daily_status_snapshot\nsnapshot.bc_daily_issue_history\n```\n\nReason:\n\nThe main PBIX model must consume curated reporting views only.\n\nRaw, clean, and base snapshot tables are allowed for backend validation, SQL development, and troubleshooting, but not for the production-facing Power BI semantic model.\n\n---\n\n## 12. Recommended Measure Container\n\nCreate a DAX-only table named:\n\n```text\n_Measures\n```\n\nAll measures should be stored in `_Measures`.\n\nThe `_Measures` table should not have relationships.\n\nRecommended display folders:\n\n```text\n01 Current KPI\n02 Control KPI\n03 Reconciliation\n04 Movement Guardrail\n99 Deprecated / Do Not Use\n```\n\n---\n\n## 13. Recommended Canonical DAX\n\nThe following DAX is the recommended Phase 12 baseline.\n\nAdjust table or column names only if the Power BI imported table/column names are different.\n\nDo not change business logic without explicit review.\n\n---\n\n## 13.1 Current KPI Measures\n\n```DAX\nCurrent Total BC Count =\nCOUNTROWS(\'Fact_Current_BC\')\n```\n\n```DAX\nCurrent Open BC Count =\nCALCULATE(\n    COUNTROWS(\'Fact_Current_BC\'),\n    \'Fact_Current_BC\'[is_open_unbilled] = TRUE()\n)\n```\n\n```DAX\nCurrent Open RAB Exposure =\nSUM(\'Fact_Current_BC\'[open_rab_exposure_amount])\n```\n\n```DAX\nCurrent High Risk BC Count =\nCALCULATE(\n    COUNTROWS(\'Fact_Current_BC\'),\n    \'Fact_Current_BC\'[high_risk_flag] = TRUE()\n)\n```\n\n```DAX\nCurrent High Risk RAB Exposure =\nCALCULATE(\n    SUM(\'Fact_Current_BC\'[open_rab_exposure_amount]),\n    \'Fact_Current_BC\'[high_risk_flag] = TRUE()\n)\n```\n\n```DAX\nCurrent Reported Excluded BC Count =\nCALCULATE(\n    COUNTROWS(\'Fact_Current_BC\'),\n    \'Fact_Current_BC\'[is_reported_excluded] = TRUE()\n)\n```\n\n```DAX\nCurrent UNCLASSIFIED PIC Count =\nCALCULATE(\n    COUNTROWS(\'Fact_Current_BC\'),\n    \'Fact_Current_BC\'[pic_internal_code] = "UNCLASSIFIED"\n)\n```\n\n```DAX\nCurrent Manual Review BC Count =\nCALCULATE(\n    COUNTROWS(\'Fact_Current_BC\'),\n    \'Fact_Current_BC\'[manual_review_flag] = TRUE()\n)\n```\n\n```DAX\nCurrent Average Aging Open BC =\nCALCULATE(\n    AVERAGE(\'Fact_Current_BC\'[unbilled_aging_days]),\n    \'Fact_Current_BC\'[is_open_unbilled] = TRUE(),\n    \'Fact_Current_BC\'[event_status] = "ENDED",\n    \'Fact_Current_BC\'[unbilled_aging_days] > 0\n)\n```\n\n---\n\n## 13.2 Control KPI Measures\n\n```DAX\nControl Total BC Count =\nMAX(\'Control_Current_KPI\'[total_bc_count])\n```\n\n```DAX\nControl Open BC Count =\nMAX(\'Control_Current_KPI\'[open_bc_count])\n```\n\n```DAX\nControl Open RAB Exposure =\nMAX(\'Control_Current_KPI\'[open_rab_exposure_amount])\n```\n\n```DAX\nControl High Risk BC Count =\nMAX(\'Control_Current_KPI\'[high_risk_bc_count])\n```\n\n```DAX\nControl High Risk RAB Exposure =\nMAX(\'Control_Current_KPI\'[high_risk_rab_exposure_amount])\n```\n\n```DAX\nControl Reported Excluded BC Count =\nMAX(\'Control_Current_KPI\'[reported_excluded_bc_count])\n```\n\n```DAX\nControl UNCLASSIFIED PIC Count =\nMAX(\'Control_Current_KPI\'[unclassified_pic_count])\n```\n\n```DAX\nControl Manual Review BC Count =\nMAX(\'Control_Current_KPI\'[manual_review_bc_count])\n```\n\n```DAX\nControl Average Aging Open BC =\nMAX(\'Control_Current_KPI\'[average_aging_open_bc])\n```\n\n---\n\n## 13.3 Reconciliation Measures\n\n```DAX\nRecon Open BC Diff =\n[Current Open BC Count] - [Control Open BC Count]\n```\n\n```DAX\nRecon Open RAB Diff =\n[Current Open RAB Exposure] - [Control Open RAB Exposure]\n```\n\n```DAX\nRecon High Risk BC Diff =\n[Current High Risk BC Count] - [Control High Risk BC Count]\n```\n\n```DAX\nRecon Average Aging Diff =\n[Current Average Aging Open BC] - [Control Average Aging Open BC]\n```\n\n```DAX\nRecon KPI Status =\nVAR OpenBCDiff =\n    ABS([Recon Open BC Diff])\nVAR OpenRABDiff =\n    ABS([Recon Open RAB Diff])\nVAR HighRiskBCDiff =\n    ABS([Recon High Risk BC Diff])\nVAR AverageAgingDiff =\n    ABS([Recon Average Aging Diff])\nRETURN\n    IF(\n        OpenBCDiff = 0\n            && OpenRABDiff = 0\n            && HighRiskBCDiff = 0\n            && AverageAgingDiff < 0.0001,\n        "PASS",\n        "NEEDS REVIEW"\n    )\n```\n\n---\n\n## 13.4 Movement Guardrail Measures\n\n```DAX\nMovement Readiness Flag =\nVAR SnapshotDateCount =\n    DISTINCTCOUNT(\'Fact_Movement_BC\'[snapshot_date])\nRETURN\n    IF(\n        SnapshotDateCount >= 2,\n        1,\n        0\n    )\n```\n\n```DAX\nMovement Readiness Status =\nVAR SnapshotDateCount =\n    DISTINCTCOUNT(\'Fact_Movement_BC\'[snapshot_date])\nRETURN\n    IF(\n        SnapshotDateCount >= 2,\n        "READY - movement can be interpreted",\n        "NOT READY - movement requires at least 2 latest-per-day snapshot dates"\n    )\n```\n\n---\n\n## 14. Optional Enhancement for Later Review\n\nThe following reconciliation measures may be added later if Phase 12 needs stronger audit coverage.\n\nThey are not required for the minimum canonical baseline, but recommended before production-readiness sign-off.\n\n```DAX\nRecon Total BC Diff =\n[Current Total BC Count] - [Control Total BC Count]\n```\n\n```DAX\nRecon High Risk RAB Diff =\n[Current High Risk RAB Exposure] - [Control High Risk RAB Exposure]\n```\n\n```DAX\nRecon Reported Excluded BC Diff =\n[Current Reported Excluded BC Count] - [Control Reported Excluded BC Count]\n```\n\n```DAX\nRecon UNCLASSIFIED PIC Diff =\n[Current UNCLASSIFIED PIC Count] - [Control UNCLASSIFIED PIC Count]\n```\n\n```DAX\nRecon Manual Review BC Diff =\n[Current Manual Review BC Count] - [Control Manual Review BC Count]\n```\n\nIf these optional reconciliation measures are added, `Recon KPI Status` should be expanded to check all reconciliation diffs.\n\n---\n\n## 15. Validation Checklist\n\nBefore this contract is considered implemented in PBIX, validate the following:\n\n### 15.1 Load Validation\n\n```text\n[ ] Only curated reporting views are loaded.\n[ ] No raw.* table is loaded.\n[ ] No clean.clean_bc table is loaded.\n[ ] No snapshot base table is loaded.\n[ ] Control_Current_KPI is loaded but disconnected.\n[ ] Control_Movement_KPI is loaded but disconnected.\n[ ] _Measures table exists and has no relationship.\n```\n\n### 15.2 Relationship Validation\n\n```text\n[ ] Dim_PIC to Fact_Current_BC relationship exists.\n[ ] Dim_PIC to Fact_Movement_BC relationship exists.\n[ ] Dim_BC to Fact_Current_BC relationship exists.\n[ ] Dim_BC to Fact_Movement_BC relationship exists.\n[ ] Dim_BC to Fact_Issue_Current relationship exists.\n[ ] Dim_Date to Fact_Movement_BC relationship exists.\n[ ] No fact-to-fact relationship exists.\n[ ] No control table relationship exists.\n[ ] No bidirectional relationship exists.\n[ ] No uncontrolled many-to-many relationship exists.\n[ ] No active Dim_Date relationship to Fact_Current_BC exists.\n```\n\n### 15.3 DAX Validation\n\n```text\n[ ] All current KPI measures use Fact_Current_BC.\n[ ] All control KPI measures use Control_Current_KPI.\n[ ] Reconciliation measures compare current vs control.\n[ ] Movement measures are guardrail-only.\n[ ] No DAX uses billing_status <> "BILLED" as open backlog logic.\n[ ] No duplicate by-PIC/by-customer/by-division measures exist.\n[ ] Open exposure uses open_rab_exposure_amount.\n[ ] Average aging uses is_open_unbilled, event_status = "ENDED", and unbilled_aging_days > 0.\n```\n\n### 15.4 Movement Validation\n\n```text\n[ ] Movement readiness status is visible on movement page.\n[ ] Movement trend is not interpreted if latest-per-day distinct snapshot dates < 2.\n[ ] Movement visuals are treated as structure-only until readiness condition is met.\n```\n\n### 15.5 Reconciliation Validation\n\n```text\n[ ] Current Open BC Count equals Control Open BC Count.\n[ ] Current Open RAB Exposure equals Control Open RAB Exposure.\n[ ] Current High Risk BC Count equals Control High Risk BC Count.\n[ ] Current Average Aging Open BC equals Control Average Aging Open BC.\n[ ] Recon KPI Status returns PASS after model setup.\n```\n\n---\n\n## 16. Validation Result\n\nCurrent document status:\n\n```text\nValidation Result: NEEDS REVIEW\nRisk Level: MEDIUM\n```\n\nReason:\n\nThis contract is ready to be used as the Phase 12 Power BI modeling baseline, but final validation depends on actual PBIX implementation.\n\nThis document can become PASS only after:\n\n1. PBIX loads only approved curated reporting views.\n2. Relationships match the approved relationship matrix.\n3. Control tables remain disconnected.\n4. Canonical DAX measures are created.\n5. KPI cards reconcile with control tables.\n6. Movement guardrail works as expected.\n7. User performs final validation.\n\n---\n\n## 17. Final Rule\n\nFor Phase 12, Power BI must remain a semantic and visualization layer.\n\nBusiness logic must primarily come from PostgreSQL curated reporting views and snapshot fields.\n\nPower BI DAX must stay simple, auditable, and aligned with SQL control outputs.\n
+# Phase 12 — Power BI Naming, Relationship, Measure, and Load Contract
+
+**Project:** Finance_Ops_Dev  
+**Phase:** Phase 12 — Power BI Semantic Model Build / Relationship Setup  
+**Document Type:** Power BI Semantic Model Contract  
+**Recommended File Name:** `phase_12_powerbi_naming_relationship_and_measure_contract.md`  
+**Status:** ACTIVE CONTRACT  
+**Validation Status:** NEEDS REVIEW until PBIX validation is completed  
+**Risk Level:** MEDIUM before PBIX validation, LOW after all relationship and KPI reconciliation checks pass  
+
+---
+
+## 1. Purpose
+
+This document defines the approved Power BI naming, relationship, control table, measure naming, canonical measure, DAX logic, column notes, and load rules for Phase 12.
+
+This document is intended to prevent ambiguity when building the Power BI semantic model.
+
+The main objectives are:
+
+1. Use only curated PostgreSQL reporting views in Power BI.
+2. Keep Power BI table names business-readable.
+3. Prevent fact-to-fact relationships.
+4. Prevent bidirectional and uncontrolled many-to-many relationships.
+5. Keep control tables disconnected.
+6. Keep DAX measures canonical and minimal.
+7. Ensure breakdown by PIC, customer, BC, division, and date comes from dimension filter context, not duplicated measures.
+8. Prevent misuse of movement data before movement is meaningful.
+9. Prevent use of raw, clean, or base snapshot tables in the main PBIX model.
+
+---
+
+## 2. Power BI Table Naming Mapping
+
+Use the following table naming convention in Power BI.
+
+| PostgreSQL Source | Power BI Table Name | Role |
+|---|---|---|
+| `reporting.fact_current_bc` | `Fact_Current_BC` | Current/latest dashboard fact |
+| `reporting.fact_movement_bc` | `Fact_Movement_BC` | Movement/trend fact |
+| `reporting.fact_issue_current` | `Fact_Issue_Current` | Issue drill-through/detail |
+| `reporting.control_current_kpi` | `Control_Current_KPI` | Disconnected current KPI reconciliation |
+| `reporting.control_movement_kpi` | `Control_Movement_KPI` | Disconnected movement KPI control |
+| `reporting.dim_pic` | `Dim_PIC` | PIC dimension |
+| `reporting.dim_bc` | `Dim_BC` | BC dimension / bridge |
+| `reporting.dim_date` | `Dim_Date` | Date dimension |
+| DAX-only table | `_Measures` | Measure container |
+
+---
+
+## 3. Power BI Relationship Mapping
+
+Create only the relationships listed below.
+
+| From | To | Cardinality | Direction | Active |
+|---|---|---|---|---|
+| `Dim_PIC[pic_code]` | `Fact_Current_BC[pic_internal_code]` | `1:*` | Single | Yes |
+| `Dim_PIC[pic_code]` | `Fact_Movement_BC[pic_internal_code]` | `1:*` | Single | Yes |
+| `Dim_BC[bc_number]` | `Fact_Current_BC[bc_number]` | `1:*` | Single | Yes |
+| `Dim_BC[bc_number]` | `Fact_Movement_BC[bc_number]` | `1:*` | Single | Yes |
+| `Dim_BC[bc_number]` | `Fact_Issue_Current[bc_number]` | `1:*` | Single | Yes |
+| `Dim_Date[date]` | `Fact_Movement_BC[snapshot_date]` | `1:*` | Single | Yes |
+
+---
+
+## 4. Relationship Rules
+
+Do not create relationships outside the approved relationship mapping.
+
+The following are not allowed:
+
+1. Fact-to-fact relationship.
+2. Control table relationship.
+3. Bidirectional filter.
+4. Uncontrolled many-to-many relationship.
+5. Active `Dim_Date` relationship to `Fact_Current_BC`.
+
+---
+
+## 5. Control Table Rule
+
+The following tables must remain disconnected:
+
+```text
+Control_Current_KPI
+Control_Movement_KPI
+```
+
+These tables are used only for reconciliation and control baseline.
+
+They must not be used as filtering dimensions.
+
+Control tables should not be connected to:
+
+1. Fact tables.
+2. Dimension tables.
+3. Other control tables.
+
+---
+
+## 6. Measure Naming Convention
+
+Use strict measure prefixes.
+
+| Prefix | Function |
+|---|---|
+| `Current ...` | KPI from `Fact_Current_BC` |
+| `Control ...` | KPI baseline from `Control_Current_KPI` |
+| `Recon ...` | Difference between current KPI and control KPI |
+| `Movement ...` | Guardrail / movement measures |
+
+---
+
+## 7. Forbidden Measure Naming Pattern
+
+Do not create measure variants that duplicate dimension filter context.
+
+Do not create measures such as:
+
+```text
+Open BC Count by PIC
+Open RAB Exposure by PIC
+PIC Open RAB Exposure
+Open BC by Customer
+Open Exposure by Division
+Total Open Backlog
+Unbilled Amount
+Open RAB
+```
+
+Breakdown by PIC, customer, division, BC, or date must come from dimension filter context.
+
+Examples:
+
+1. PIC breakdown must come from `Dim_PIC`.
+2. BC breakdown must come from `Dim_BC`.
+3. Movement date breakdown must come from `Dim_Date`.
+4. Issue drill-through must use `Dim_BC` filter path.
+
+---
+
+## 8. Canonical Measure List
+
+Only the following canonical measures should be created for Phase 12 baseline.
+
+Additional measures require explicit review before being added.
+
+### 8.1 Current KPI Measures
+
+| Measure Name | Source Table | Purpose |
+|---|---|---|
+| `Current Total BC Count` | `Fact_Current_BC` | Count all current BC rows |
+| `Current Open BC Count` | `Fact_Current_BC` | Count open unbilled BC |
+| `Current Open RAB Exposure` | `Fact_Current_BC` | Sum open RAB exposure |
+| `Current High Risk BC Count` | `Fact_Current_BC` | Count high risk BC |
+| `Current High Risk RAB Exposure` | `Fact_Current_BC` | Sum high risk RAB exposure |
+| `Current Reported Excluded BC Count` | `Fact_Current_BC` | Count reported/excluded BC |
+| `Current UNCLASSIFIED PIC Count` | `Fact_Current_BC` | Count BC assigned to UNCLASSIFIED PIC |
+| `Current Manual Review BC Count` | `Fact_Current_BC` | Count BC requiring manual review |
+| `Current Average Aging Open BC` | `Fact_Current_BC` | Average aging for valid open ended BC |
+
+### 8.2 Control KPI Measures
+
+| Measure Name | Source Table | Purpose |
+|---|---|---|
+| `Control Total BC Count` | `Control_Current_KPI` | Control baseline for total BC |
+| `Control Open BC Count` | `Control_Current_KPI` | Control baseline for open BC |
+| `Control Open RAB Exposure` | `Control_Current_KPI` | Control baseline for open RAB exposure |
+| `Control High Risk BC Count` | `Control_Current_KPI` | Control baseline for high risk BC |
+| `Control High Risk RAB Exposure` | `Control_Current_KPI` | Control baseline for high risk RAB exposure |
+| `Control Reported Excluded BC Count` | `Control_Current_KPI` | Control baseline for reported/excluded BC |
+| `Control UNCLASSIFIED PIC Count` | `Control_Current_KPI` | Control baseline for UNCLASSIFIED PIC |
+| `Control Manual Review BC Count` | `Control_Current_KPI` | Control baseline for manual review BC |
+| `Control Average Aging Open BC` | `Control_Current_KPI` | Control baseline for average aging open BC |
+
+### 8.3 Reconciliation Measures
+
+| Measure Name | Purpose |
+|---|---|
+| `Recon Open BC Diff` | Difference between current open BC and control open BC |
+| `Recon Open RAB Diff` | Difference between current open RAB exposure and control open RAB exposure |
+| `Recon High Risk BC Diff` | Difference between current high risk BC and control high risk BC |
+| `Recon Average Aging Diff` | Difference between current average aging and control average aging |
+| `Recon KPI Status` | Overall KPI reconciliation status |
+
+### 8.4 Movement Guardrail Measures
+
+| Measure Name | Purpose |
+|---|---|
+| `Movement Readiness Flag` | Indicates whether movement has enough latest-per-day snapshot dates |
+| `Movement Readiness Status` | Text status for movement readiness |
+
+---
+
+## 9. Core DAX Logic Rule
+
+The Power BI model must use the prepared SQL/snapshot fields.
+
+Do not recreate complex SQL logic in DAX.
+
+### 9.1 Open Backlog Logic
+
+Use:
+
+```text
+is_open_unbilled = TRUE
+```
+
+Do not use:
+
+```text
+billing_status <> "BILLED"
+```
+
+Reason:
+
+`billing_status <> "BILLED"` is too simplistic and can incorrectly include reported/excluded records or fail to account for partial invoice and invoice completion logic.
+
+### 9.2 Open Exposure Logic
+
+Use:
+
+```text
+open_rab_exposure_amount
+```
+
+Do not calculate open exposure from raw `rab_budget_amount` with simplistic status filtering.
+
+Correct approach:
+
+```text
+SUM(Fact_Current_BC[open_rab_exposure_amount])
+```
+
+### 9.3 Average Aging Logic
+
+Use the following logic:
+
+```text
+is_open_unbilled = TRUE
+event_status = "ENDED"
+unbilled_aging_days > 0
+```
+
+Average aging should not include:
+
+1. Closed/fully invoiced BC.
+2. Reported/excluded BC.
+3. ON GOING event if the KPI is intended to represent aging after event completion.
+4. Zero or invalid aging days.
+
+---
+
+## 10. Important Column Notes
+
+### 10.1 Dim_PIC
+
+`reporting.dim_pic` already contains a synthetic row for unclassified PIC.
+
+Expected synthetic row:
+
+| Column | Value |
+|---|---|
+| `pic_code` | `UNCLASSIFIED` |
+| `pic_full_name` | `UNCLASSIFIED - PIC not input in ERP` |
+| `division_code` | `UNCLASSIFIED` |
+| `pic_status` | `ACTIVE` |
+| `is_unclassified_pic` | `TRUE` |
+
+This row is required so that orphan PIC count becomes zero.
+
+`UNCLASSIFIED` is a correction bucket.
+
+It must not be treated as PIC performance penalty.
+
+### 10.2 Dim_Date
+
+Current condition:
+
+```text
+Dim_Date rows = 1
+distinct_date = 1
+```
+
+This is expected because movement latest-per-day snapshot date is currently only one date.
+
+`Dim_Date` is only actively related to:
+
+```text
+Fact_Movement_BC[snapshot_date]
+```
+
+Do not create active relationship from `Dim_Date` to `Fact_Current_BC`.
+
+### 10.3 Movement
+
+Movement source is structurally safe, but movement trend is not yet analytically meaningful.
+
+Current condition:
+
+```text
+latest-per-day distinct_snapshot_dates = 1
+```
+
+Movement trend must not be interpreted until:
+
+```text
+latest-per-day distinct_snapshot_dates >= 2
+```
+
+Allowed at this stage:
+
+1. Build movement table.
+2. Build movement relationship to `Dim_Date`.
+3. Build movement readiness guardrail.
+4. Display movement readiness warning.
+
+Not allowed at this stage:
+
+1. Interpret movement trend as business insight.
+2. Claim daily increase/decrease as real movement.
+3. Use movement delta for management decision before at least two latest-per-day snapshot dates exist.
+
+---
+
+## 11. Power BI Load Rule
+
+Load only curated reporting views into the main PBIX model.
+
+Approved objects:
+
+```text
+reporting.fact_current_bc
+reporting.fact_movement_bc
+reporting.fact_issue_current
+reporting.control_current_kpi
+reporting.control_movement_kpi
+reporting.dim_pic
+reporting.dim_bc
+reporting.dim_date
+```
+
+Do not load the following objects into the main PBIX model:
+
+```text
+raw.*
+clean.clean_bc
+snapshot.bc_daily_status_snapshot
+snapshot.bc_daily_issue_history
+```
+
+Reason:
+
+The main PBIX model must consume curated reporting views only.
+
+Raw, clean, and base snapshot tables are allowed for backend validation, SQL development, and troubleshooting, but not for the production-facing Power BI semantic model.
+
+---
+
+## 12. Recommended Measure Container
+
+Create a DAX-only table named:
+
+```text
+_Measures
+```
+
+All measures should be stored in `_Measures`.
+
+The `_Measures` table should not have relationships.
+
+Recommended display folders:
+
+```text
+01 Current KPI
+02 Control KPI
+03 Reconciliation
+04 Movement Guardrail
+99 Deprecated / Do Not Use
+```
+
+---
+
+## 13. Recommended Canonical DAX
+
+The following DAX is the recommended Phase 12 baseline.
+
+Adjust table or column names only if the Power BI imported table/column names are different.
+
+Do not change business logic without explicit review.
+
+### 13.1 Current KPI Measures
+
+```DAX
+Current Total BC Count =
+COUNTROWS('Fact_Current_BC')
+```
+
+```DAX
+Current Open BC Count =
+CALCULATE(
+    COUNTROWS('Fact_Current_BC'),
+    'Fact_Current_BC'[is_open_unbilled] = TRUE()
+)
+```
+
+```DAX
+Current Open RAB Exposure =
+SUM('Fact_Current_BC'[open_rab_exposure_amount])
+```
+
+```DAX
+Current High Risk BC Count =
+CALCULATE(
+    COUNTROWS('Fact_Current_BC'),
+    'Fact_Current_BC'[high_risk_flag] = TRUE()
+)
+```
+
+```DAX
+Current High Risk RAB Exposure =
+CALCULATE(
+    SUM('Fact_Current_BC'[open_rab_exposure_amount]),
+    'Fact_Current_BC'[high_risk_flag] = TRUE()
+)
+```
+
+```DAX
+Current Reported Excluded BC Count =
+CALCULATE(
+    COUNTROWS('Fact_Current_BC'),
+    'Fact_Current_BC'[is_reported_excluded] = TRUE()
+)
+```
+
+```DAX
+Current UNCLASSIFIED PIC Count =
+CALCULATE(
+    COUNTROWS('Fact_Current_BC'),
+    'Fact_Current_BC'[pic_internal_code] = "UNCLASSIFIED"
+)
+```
+
+```DAX
+Current Manual Review BC Count =
+CALCULATE(
+    COUNTROWS('Fact_Current_BC'),
+    'Fact_Current_BC'[manual_review_flag] = TRUE()
+)
+```
+
+```DAX
+Current Average Aging Open BC =
+CALCULATE(
+    AVERAGE('Fact_Current_BC'[unbilled_aging_days]),
+    'Fact_Current_BC'[is_open_unbilled] = TRUE(),
+    'Fact_Current_BC'[event_status] = "ENDED",
+    'Fact_Current_BC'[unbilled_aging_days] > 0
+)
+```
+
+### 13.2 Control KPI Measures
+
+```DAX
+Control Total BC Count =
+MAX('Control_Current_KPI'[total_bc_count])
+```
+
+```DAX
+Control Open BC Count =
+MAX('Control_Current_KPI'[open_bc_count])
+```
+
+```DAX
+Control Open RAB Exposure =
+MAX('Control_Current_KPI'[open_rab_exposure_amount])
+```
+
+```DAX
+Control High Risk BC Count =
+MAX('Control_Current_KPI'[high_risk_bc_count])
+```
+
+```DAX
+Control High Risk RAB Exposure =
+MAX('Control_Current_KPI'[high_risk_rab_exposure_amount])
+```
+
+```DAX
+Control Reported Excluded BC Count =
+MAX('Control_Current_KPI'[reported_excluded_bc_count])
+```
+
+```DAX
+Control UNCLASSIFIED PIC Count =
+MAX('Control_Current_KPI'[unclassified_pic_count])
+```
+
+```DAX
+Control Manual Review BC Count =
+MAX('Control_Current_KPI'[manual_review_bc_count])
+```
+
+```DAX
+Control Average Aging Open BC =
+MAX('Control_Current_KPI'[average_aging_open_bc])
+```
+
+### 13.3 Reconciliation Measures
+
+```DAX
+Recon Open BC Diff =
+[Current Open BC Count] - [Control Open BC Count]
+```
+
+```DAX
+Recon Open RAB Diff =
+[Current Open RAB Exposure] - [Control Open RAB Exposure]
+```
+
+```DAX
+Recon High Risk BC Diff =
+[Current High Risk BC Count] - [Control High Risk BC Count]
+```
+
+```DAX
+Recon Average Aging Diff =
+[Current Average Aging Open BC] - [Control Average Aging Open BC]
+```
+
+```DAX
+Recon KPI Status =
+VAR OpenBCDiff =
+    ABS([Recon Open BC Diff])
+VAR OpenRABDiff =
+    ABS([Recon Open RAB Diff])
+VAR HighRiskBCDiff =
+    ABS([Recon High Risk BC Diff])
+VAR AverageAgingDiff =
+    ABS([Recon Average Aging Diff])
+RETURN
+    IF(
+        OpenBCDiff = 0
+            && OpenRABDiff = 0
+            && HighRiskBCDiff = 0
+            && AverageAgingDiff < 0.0001,
+        "PASS",
+        "NEEDS REVIEW"
+    )
+```
+
+### 13.4 Movement Guardrail Measures
+
+```DAX
+Movement Readiness Flag =
+VAR SnapshotDateCount =
+    DISTINCTCOUNT('Fact_Movement_BC'[snapshot_date])
+RETURN
+    IF(
+        SnapshotDateCount >= 2,
+        1,
+        0
+    )
+```
+
+```DAX
+Movement Readiness Status =
+VAR SnapshotDateCount =
+    DISTINCTCOUNT('Fact_Movement_BC'[snapshot_date])
+RETURN
+    IF(
+        SnapshotDateCount >= 2,
+        "READY - movement can be interpreted",
+        "NOT READY - movement requires at least 2 latest-per-day snapshot dates"
+    )
+```
+
+---
+
+## 14. Optional Enhancement for Later Review
+
+The following reconciliation measures may be added later if Phase 12 needs stronger audit coverage.
+
+They are not required for the minimum canonical baseline, but recommended before production-readiness sign-off.
+
+```DAX
+Recon Total BC Diff =
+[Current Total BC Count] - [Control Total BC Count]
+```
+
+```DAX
+Recon High Risk RAB Diff =
+[Current High Risk RAB Exposure] - [Control High Risk RAB Exposure]
+```
+
+```DAX
+Recon Reported Excluded BC Diff =
+[Current Reported Excluded BC Count] - [Control Reported Excluded BC Count]
+```
+
+```DAX
+Recon UNCLASSIFIED PIC Diff =
+[Current UNCLASSIFIED PIC Count] - [Control UNCLASSIFIED PIC Count]
+```
+
+```DAX
+Recon Manual Review BC Diff =
+[Current Manual Review BC Count] - [Control Manual Review BC Count]
+```
+
+If these optional reconciliation measures are added, `Recon KPI Status` should be expanded to check all reconciliation diffs.
+
+---
+
+## 15. Validation Checklist
+
+Before this contract is considered implemented in PBIX, validate the following:
+
+### 15.1 Load Validation
+
+```text
+[ ] Only curated reporting views are loaded.
+[ ] No raw.* table is loaded.
+[ ] No clean.clean_bc table is loaded.
+[ ] No snapshot base table is loaded.
+[ ] Control_Current_KPI is loaded but disconnected.
+[ ] Control_Movement_KPI is loaded but disconnected.
+[ ] _Measures table exists and has no relationship.
+```
+
+### 15.2 Relationship Validation
+
+```text
+[ ] Dim_PIC to Fact_Current_BC relationship exists.
+[ ] Dim_PIC to Fact_Movement_BC relationship exists.
+[ ] Dim_BC to Fact_Current_BC relationship exists.
+[ ] Dim_BC to Fact_Movement_BC relationship exists.
+[ ] Dim_BC to Fact_Issue_Current relationship exists.
+[ ] Dim_Date to Fact_Movement_BC relationship exists.
+[ ] No fact-to-fact relationship exists.
+[ ] No control table relationship exists.
+[ ] No bidirectional relationship exists.
+[ ] No uncontrolled many-to-many relationship exists.
+[ ] No active Dim_Date relationship to Fact_Current_BC exists.
+```
+
+### 15.3 DAX Validation
+
+```text
+[ ] All current KPI measures use Fact_Current_BC.
+[ ] All control KPI measures use Control_Current_KPI.
+[ ] Reconciliation measures compare current vs control.
+[ ] Movement measures are guardrail-only.
+[ ] No DAX uses billing_status <> "BILLED" as open backlog logic.
+[ ] No duplicate by-PIC/by-customer/by-division measures exist.
+[ ] Open exposure uses open_rab_exposure_amount.
+[ ] Average aging uses is_open_unbilled, event_status = "ENDED", and unbilled_aging_days > 0.
+```
+
+### 15.4 Movement Validation
+
+```text
+[ ] Movement readiness status is visible on movement page.
+[ ] Movement trend is not interpreted if latest-per-day distinct snapshot dates < 2.
+[ ] Movement visuals are treated as structure-only until readiness condition is met.
+```
+
+### 15.5 Reconciliation Validation
+
+```text
+[ ] Current Open BC Count equals Control Open BC Count.
+[ ] Current Open RAB Exposure equals Control Open RAB Exposure.
+[ ] Current High Risk BC Count equals Control High Risk BC Count.
+[ ] Current Average Aging Open BC equals Control Average Aging Open BC.
+[ ] Recon KPI Status returns PASS after model setup.
+```
+
+---
+
+## 16. Validation Result
+
+Current document status:
+
+```text
+Validation Result: NEEDS REVIEW
+Risk Level: MEDIUM
+```
+
+Reason:
+
+This contract is ready to be used as the Phase 12 Power BI modeling baseline, but final validation depends on actual PBIX implementation.
+
+This document can become PASS only after:
+
+1. PBIX loads only approved curated reporting views.
+2. Relationships match the approved relationship matrix.
+3. Control tables remain disconnected.
+4. Canonical DAX measures are created.
+5. KPI cards reconcile with control tables.
+6. Movement guardrail works as expected.
+7. User performs final validation.
+
+---
+
+## 17. Final Rule
+
+For Phase 12, Power BI must remain a semantic and visualization layer.
+
+Business logic must primarily come from PostgreSQL curated reporting views and snapshot fields.
+
+Power BI DAX must stay simple, auditable, and aligned with SQL control outputs.
